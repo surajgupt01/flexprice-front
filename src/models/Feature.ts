@@ -19,6 +19,12 @@ export interface AlertSettings {
 	alert_enabled?: boolean;
 }
 
+export interface FeatureReportingUnit {
+	unit_singular?: string;
+	unit_plural?: string;
+	conversion_rate?: string;
+}
+
 export interface Feature extends BaseModel {
 	readonly name: string;
 	readonly description: string;
