@@ -28,18 +28,24 @@ const CUSTOM_ANALYTICS_DISPLAY_NAMES: Record<string, string> = {
 
 // ─── Main Widget ──────────────────────────────────────────────────────────────
 
-const DEFAULT_CONFIG: MetricCardsConfig = { show_custom_metrics: true, show_cost_metrics: true };
+const DEFAULT_CONFIG: MetricCardsConfig = {
+	show_custom_metrics: true,
+	show_revenue_metric: true,
+	show_cost_metrics: true,
+};
 
 /**
- * Renders two optional card groups in one flat auto-fill grid row:
- *   1. Cost metrics    — Revenue / Cost / Margin / Margin % from cost analytics API
- *   2. Custom metrics  — from revenue analytics custom_analytics[]
+ * Renders three optional card groups in one flat auto-fill grid row:
+ *   1. Revenue metric     — Revenue from cost analytics API
+ *   2. Cost metrics       — Cost / Margin / Margin % from cost analytics API
+ *   3. Custom metrics     — from revenue analytics custom_analytics[]
  *
  * Uses the same MetricCard molecule as the admin CostAnalytics page.
  * auto-fill grid ensures all cards sit on one line at full width.
  */
 const MetricCardsWidget = ({ analyticsParams, config = DEFAULT_CONFIG }: MetricCardsWidgetProps) => {
 	const showCustom = config.show_custom_metrics;
+	const showRevenue = config.show_revenue_metric;
 	const showCost = config.show_cost_metrics;
 
 	// ── Revenue analytics (custom_analytics[]) ───────────────────────────────
@@ -66,7 +72,7 @@ const MetricCardsWidget = ({ analyticsParams, config = DEFAULT_CONFIG }: MetricC
 				end_time: analyticsParams.end_time,
 				expand: ['meter', 'price'],
 			}),
-		enabled: showCost,
+		enabled: showRevenue || showCost,
 	});
 
 	useEffect(() => {
@@ -78,10 +84,13 @@ const MetricCardsWidget = ({ analyticsParams, config = DEFAULT_CONFIG }: MetricC
 	}, [costError]);
 
 	const customItems: CustomAnalyticItem[] = analyticsData?.custom_analytics ?? [];
-	const isLoading = (showCustom && analyticsLoading) || (showCost && costLoading);
+	const isLoading = (showCustom && analyticsLoading) || ((showRevenue || showCost) && costLoading);
 
 	if (isLoading) {
-		const skeletonCount = (showCost ? 4 : 0) + (showCustom ? 2 : 0) || 4;
+		const revenueCount = showRevenue ? 1 : 0;
+		const costCount = showCost ? 3 : 0;
+		const customCount = showCustom ? 2 : 0;
+		const skeletonCount = revenueCount + costCount + customCount || 4;
 		return (
 			<div className='grid grid-cols-2 md:grid-cols-4 gap-3'>
 				{Array.from({ length: skeletonCount }).map((_, i) => (
@@ -94,10 +103,11 @@ const MetricCardsWidget = ({ analyticsParams, config = DEFAULT_CONFIG }: MetricC
 		);
 	}
 
+	const hasRevenueData = showRevenue && costData;
 	const hasCostData = showCost && costData;
 	const hasCustomData = showCustom && customItems.length > 0;
 
-	if (!hasCostData && !hasCustomData) return null;
+	if (!hasRevenueData && !hasCostData && !hasCustomData) return null;
 
 	const currency = costData?.currency ?? 'USD';
 	const totalRevenue = parseFloat(costData?.total_revenue ?? '0');
@@ -105,20 +115,25 @@ const MetricCardsWidget = ({ analyticsParams, config = DEFAULT_CONFIG }: MetricC
 	const margin = parseFloat(costData?.margin ?? '0');
 	const marginPercent = parseFloat(costData?.margin_percent ?? '0');
 
+	// Calculate total card count for grid layout
+	const revenueCardCount = hasRevenueData ? 1 : 0;
+	const costCardCount = hasCostData ? 3 : 0;
+	const customCardCount = hasCustomData ? customItems.length : 0;
+	const totalCards = revenueCardCount + costCardCount + customCardCount;
+
 	return (
 		<div
 			className='grid gap-3'
 			style={{
-				gridTemplateColumns: (() => {
-					const n = (hasCostData ? 4 : 0) + (hasCustomData ? customItems.length : 0);
-					return n === 1 ? 'auto' : `repeat(${n}, 1fr)`;
-				})(),
-				width: (hasCostData ? 4 : 0) + (hasCustomData ? customItems.length : 0) === 1 ? '25%' : '100%',
+				gridTemplateColumns: totalCards === 1 ? 'auto' : `repeat(${totalCards}, 1fr)`,
+				width: totalCards === 1 ? '25%' : '100%',
 			}}>
-			{/* Cost metrics — always 4 cards */}
+			{/* Revenue metric */}
+			{hasRevenueData && <MetricCard title='Revenue' value={totalRevenue} currency={currency} />}
+
+			{/* Cost metrics — 3 cards */}
 			{hasCostData && (
 				<>
-					<MetricCard title='Revenue' value={totalRevenue} currency={currency} />
 					<MetricCard title='Cost' value={totalCost} currency={currency} />
 					<MetricCard title='Margin' value={margin} currency={currency} showChangeIndicator isNegative={margin < 0} />
 					<MetricCard title='Margin %' value={marginPercent} isPercent showChangeIndicator isNegative={marginPercent < 0} />

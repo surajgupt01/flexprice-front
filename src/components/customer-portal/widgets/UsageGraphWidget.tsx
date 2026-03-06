@@ -12,6 +12,7 @@ interface UsageGraphWidgetProps {
 	config: UsageGraphConfig;
 	/** Resolved by SectionContent (shared date filter — same cache key as UsageBreakdownWidget) */
 	analyticsParams: DashboardAnalyticsRequest;
+	label?: string;
 }
 
 /**
@@ -20,7 +21,7 @@ interface UsageGraphWidgetProps {
  * Both share the same React Query cache entry — one API call serves both.
  * Returns null if no data — no empty state container shown.
  */
-const UsageGraphWidget = ({ config, analyticsParams }: UsageGraphWidgetProps) => {
+const UsageGraphWidget = ({ config, analyticsParams, label }: UsageGraphWidgetProps) => {
 	const {
 		data: analyticsData,
 		isLoading,
@@ -53,13 +54,17 @@ const UsageGraphWidget = ({ config, analyticsParams }: UsageGraphWidgetProps) =>
 	const filteredAnalyticsData = analyticsData ? { ...analyticsData, items: filteredItems } : undefined;
 
 	return (
-		<Card className='bg-white border border-[#E9E9E9] rounded-xl p-6'>
-			<h3 className='text-base font-medium text-zinc-950 mb-4'>Usage</h3>
-			{isLoading ? (
-				<Skeleton className='h-64 w-full' />
-			) : filteredAnalyticsData ? (
-				<CustomerUsageChart data={filteredAnalyticsData} />
-			) : null}
+		<Card className='bg-white border border-[#E9E9E9] rounded-xl overflow-hidden'>
+			<div className='p-6 border-b border-[#E9E9E9]'>
+				<h3 className='text-base font-medium text-zinc-950'>{label || 'Usage Trend'}</h3>
+			</div>
+			<div className='p-6'>
+				{isLoading ? (
+					<Skeleton className='h-64 w-full' />
+				) : filteredAnalyticsData ? (
+					<CustomerUsageChart data={filteredAnalyticsData} />
+				) : null}
+			</div>
 		</Card>
 	);
 };

@@ -47,12 +47,12 @@ interface TabRendererProps {
 const TabRenderer = ({ tab, subscriptions = [], usageData = [], analyticsParams }: TabRendererProps) => {
 	return (
 		<Suspense fallback={<FallbackLoader />}>
-			{tab.type === 'subscriptions' && <SubscriptionsWidget subscriptions={subscriptions} />}
-			{tab.type === 'current_usage' && <CurrentUsageWidget usageData={usageData} />}
+			{tab.type === 'subscriptions' && <SubscriptionsWidget subscriptions={subscriptions} label={tab.label} />}
+			{tab.type === 'current_usage' && <CurrentUsageWidget usageData={usageData} label={tab.label} />}
 			{tab.type === 'usage_graph' && (
-				<UsageGraphWidget config={tab.usage_graph ?? DEFAULT_USAGE_GRAPH_CONFIG} analyticsParams={analyticsParams} />
+				<UsageGraphWidget config={tab.usage_graph ?? DEFAULT_USAGE_GRAPH_CONFIG} analyticsParams={analyticsParams} label={tab.label} />
 			)}
-			{tab.type === 'usage_breakdown' && <UsageBreakdownWidget analyticsParams={analyticsParams} />}
+			{tab.type === 'usage_breakdown' && <UsageBreakdownWidget analyticsParams={analyticsParams} label={tab.label} />}
 			{tab.type === 'invoices' && <InvoicesWidget />}
 			{tab.type === 'wallet_balance' && <WalletBalanceWidget />}
 			{tab.type === 'wallet_transactions' && <WalletTransactionsWidget />}

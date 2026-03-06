@@ -5,18 +5,21 @@ import { formatAmount } from '@/components/atoms/Input/Input';
 
 interface CurrentUsageWidgetProps {
 	usageData: CustomerUsage[];
+	label?: string;
 }
 
-const CurrentUsageWidget = ({ usageData }: CurrentUsageWidgetProps) => {
+const CurrentUsageWidget = ({ usageData, label }: CurrentUsageWidgetProps) => {
 	const meteredUsage = usageData?.filter((item) => item.feature?.type === FEATURE_TYPE.METERED) || [];
 
 	// Return null if no data — no empty container shown
 	if (meteredUsage.length === 0) return null;
 
 	return (
-		<Card className='bg-white border border-[#E9E9E9] rounded-xl p-6'>
-			<h3 className='text-base font-medium text-zinc-950 mb-4'>Current Usage</h3>
-			<div className='space-y-4'>
+		<Card className='bg-white border border-[#E9E9E9] rounded-xl overflow-hidden'>
+			<div className='p-6 border-b border-[#E9E9E9]'>
+				<h3 className='text-base font-medium text-zinc-950'>{label || 'Usage Quota'}</h3>
+			</div>
+			<div className='p-6 space-y-4'>
 				{meteredUsage.map((item, index) => {
 					const usage = Number(item.current_usage || 0);
 					const limit = item.is_unlimited ? null : item.total_limit ? Number(item.total_limit) : null;

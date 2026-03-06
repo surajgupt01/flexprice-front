@@ -6,6 +6,7 @@ import EmptyState from '../EmptyState';
 
 interface SubscriptionsWidgetProps {
 	subscriptions: Subscription[];
+	label?: string;
 }
 
 const getStatusChip = (status: SUBSCRIPTION_STATUS) => {
@@ -20,7 +21,7 @@ const getStatusChip = (status: SUBSCRIPTION_STATUS) => {
 	return <Chip label={config.label} variant={config.variant} />;
 };
 
-const SubscriptionsWidget = ({ subscriptions }: SubscriptionsWidgetProps) => {
+const SubscriptionsWidget = ({ subscriptions, label }: SubscriptionsWidgetProps) => {
 	const activeSubscriptions =
 		subscriptions?.filter(
 			(sub) => sub.subscription_status === SUBSCRIPTION_STATUS.ACTIVE || sub.subscription_status === SUBSCRIPTION_STATUS.TRIALING,
@@ -35,9 +36,11 @@ const SubscriptionsWidget = ({ subscriptions }: SubscriptionsWidgetProps) => {
 	}
 
 	return (
-		<Card className='bg-white border border-[#E9E9E9] rounded-xl p-6'>
-			<h3 className='text-base font-medium text-zinc-950 mb-4'>Subscriptions</h3>
-			<div className='space-y-4'>
+		<Card className='bg-white border border-[#E9E9E9] rounded-xl overflow-hidden'>
+			<div className='p-6 border-b border-[#E9E9E9]'>
+				<h3 className='text-base font-medium text-zinc-950'>{label || 'Subscriptions'}</h3>
+			</div>
+			<div className='p-6 space-y-4'>
 				{activeSubscriptions.map((subscription) => (
 					<div key={subscription.id} className='border border-[#E9E9E9] rounded-lg p-4 hover:bg-zinc-50 transition-colors'>
 						<div className='flex items-start justify-between mb-3'>

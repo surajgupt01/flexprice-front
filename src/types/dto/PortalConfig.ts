@@ -37,11 +37,13 @@ export type TabType =
 /**
  * Controls which sub-groups appear inside the metric_cards widget.
  *   show_custom_metrics  → cards from revenue analytics custom_analytics[]
- *   show_cost_metrics    → Revenue / Cost / Margin / Margin % from cost analytics API
- * If the field is absent in the stored config, both default to true.
+ *   show_revenue_metric  → Revenue card from cost analytics API
+ *   show_cost_metrics    → Cost / Margin / Margin % cards from cost analytics API
+ * If the field is absent in the stored config, all default to true.
  */
 export interface MetricCardsConfig {
 	show_custom_metrics: boolean;
+	show_revenue_metric: boolean;
 	show_cost_metrics: boolean;
 }
 
@@ -60,7 +62,7 @@ export interface UsageGraphConfig {
 export interface TabConfig {
 	id: string; // unique instance key e.g. "1", "2"
 	type: TabType;
-	label?: string; // optional display label override
+	label?: string; // optional display label override (e.g., "Usage Trend" instead of default "Usage")
 	enabled: boolean;
 	order: number;
 	/** Only used when type = "usage_graph" */
@@ -108,7 +110,7 @@ export const DEFAULT_PORTAL_CONFIG: PortalConfig = {
 					type: 'metric_cards',
 					enabled: true,
 					order: 1,
-					metric_cards: { show_custom_metrics: true, show_cost_metrics: true },
+					metric_cards: { show_custom_metrics: true, show_revenue_metric: true, show_cost_metrics: true },
 				},
 				{
 					id: '2',

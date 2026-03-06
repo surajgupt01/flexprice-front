@@ -10,6 +10,7 @@ import { formatNumber, getCurrencySymbol } from '@/utils';
 
 interface UsageBreakdownWidgetProps {
 	analyticsParams: DashboardAnalyticsRequest;
+	label?: string;
 }
 
 /**
@@ -17,7 +18,7 @@ interface UsageBreakdownWidgetProps {
  * Shares React Query cache with UsageGraphWidget (same key) — zero duplicate API calls.
  * Returns null if there are no items — no empty container shown.
  */
-const UsageBreakdownWidget = ({ analyticsParams }: UsageBreakdownWidgetProps) => {
+const UsageBreakdownWidget = ({ analyticsParams, label }: UsageBreakdownWidgetProps) => {
 	const {
 		data: analyticsData,
 		isLoading,
@@ -57,10 +58,6 @@ const UsageBreakdownWidget = ({ analyticsParams }: UsageBreakdownWidgetProps) =>
 			},
 		},
 		{
-			title: 'Events',
-			render: (row) => <span>{formatNumber(row.event_count)}</span>,
-		},
-		{
 			title: 'Total Cost',
 			render: (row) => {
 				if (row.total_cost === 0 || !row.currency) return <span>-</span>;
@@ -97,7 +94,7 @@ const UsageBreakdownWidget = ({ analyticsParams }: UsageBreakdownWidgetProps) =>
 	return (
 		<Card className='bg-white border border-[#E9E9E9] rounded-xl overflow-hidden'>
 			<div className='p-6 border-b border-[#E9E9E9]'>
-				<h3 className='text-base font-medium text-zinc-950'>Usage Breakdown</h3>
+				<h3 className='text-base font-medium text-zinc-950'>{label || 'Usage Breakdown'}</h3>
 			</div>
 			<FlexpriceTable columns={columns} data={tableData} showEmptyRow />
 		</Card>

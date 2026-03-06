@@ -78,22 +78,26 @@ const WalletTransactionsWidget = () => {
 			)}
 
 			{/* Transactions */}
-			<Card className='bg-white border border-[#E9E9E9] rounded-xl p-6'>
-				<h3 className='text-base font-medium text-zinc-950 mb-4'>Transaction History</h3>
-				{transactionsLoading ? (
-					<div className='animate-pulse space-y-3'>
-						{[1, 2, 3].map((i) => (
-							<div key={i} className='h-12 bg-zinc-100 rounded'></div>
-						))}
-					</div>
-				) : transactionsData?.items && transactionsData.items.length > 0 ? (
-					<>
-						<WalletTransactionsTable data={transactionsData.items} />
-						<ShortPagination unit='transactions' totalItems={transactionsData.pagination?.total || 0} />
-					</>
-				) : (
-					<EmptyState title='No transactions' description='Your transaction history will appear here' />
-				)}
+			<Card className='bg-white border border-[#E9E9E9] rounded-xl overflow-hidden'>
+				<div className='p-6 border-b border-[#E9E9E9]'>
+					<h3 className='text-base font-medium text-zinc-950'>Transaction History</h3>
+				</div>
+				<div className='p-6'>
+					{transactionsLoading ? (
+						<div className='animate-pulse space-y-3'>
+							{[1, 2, 3].map((i) => (
+								<div key={i} className='h-12 bg-zinc-100 rounded'></div>
+							))}
+						</div>
+					) : transactionsData?.items && transactionsData.items.length > 0 ? (
+						<>
+							<WalletTransactionsTable data={transactionsData.items} />
+							<ShortPagination unit='transactions' totalItems={transactionsData.pagination?.total || 0} />
+						</>
+					) : (
+						<EmptyState title='No transactions' description='Your transaction history will appear here' />
+					)}
+				</div>
 			</Card>
 		</div>
 	);

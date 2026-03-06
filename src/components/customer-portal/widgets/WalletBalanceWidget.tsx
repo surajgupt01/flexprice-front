@@ -49,10 +49,15 @@ const WalletBalanceWidget = () => {
 
 	if (isLoading) {
 		return (
-			<Card className='bg-white border border-[#E9E9E9] rounded-xl p-6'>
-				<div className='animate-pulse'>
-					<div className='h-10 bg-zinc-100 rounded w-1/3 mb-6'></div>
-					<div className='h-10 bg-zinc-100 rounded w-1/4'></div>
+			<Card className='bg-white border border-[#E9E9E9] rounded-xl overflow-hidden'>
+				<div className='p-6 border-b border-[#E9E9E9]'>
+					<div className='h-5 w-32 bg-zinc-100 animate-pulse rounded' />
+				</div>
+				<div className='p-6'>
+					<div className='animate-pulse space-y-3'>
+						<div className='h-4 bg-zinc-100 rounded w-20'></div>
+						<div className='h-10 bg-zinc-100 rounded w-32'></div>
+					</div>
 				</div>
 			</Card>
 		);
@@ -69,37 +74,41 @@ const WalletBalanceWidget = () => {
 	const currencySymbol = getCurrencySymbol(walletBalance?.currency ?? wallet.currency ?? 'USD');
 
 	return (
-		<Card className='bg-white border border-[#E9E9E9] rounded-xl p-6'>
-			<div className='flex items-center gap-3 mb-6'>
-				<div className='h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center'>
-					<WalletIcon className='h-5 w-5 text-blue-600' />
-				</div>
-				<div>
-					<h3 className='text-base font-medium text-zinc-950'>{wallet.name || 'Wallet'}</h3>
-					{wallet.wallet_status && getWalletStatusChip(wallet.wallet_status)}
+		<Card className='bg-white border border-[#E9E9E9] rounded-xl overflow-hidden'>
+			<div className='p-6 border-b border-[#E9E9E9]'>
+				<div className='flex items-center gap-3'>
+					<div className='h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center'>
+						<WalletIcon className='h-5 w-5 text-blue-600' />
+					</div>
+					<div>
+						<h3 className='text-base font-medium text-zinc-950'>{wallet.name || 'Wallet'}</h3>
+						{wallet.wallet_status && getWalletStatusChip(wallet.wallet_status)}
+					</div>
 				</div>
 			</div>
 
-			{balanceLoading ? (
-				<div className='animate-pulse space-y-3'>
-					<div className='h-4 bg-zinc-100 rounded w-20'></div>
-					<div className='h-10 bg-zinc-100 rounded w-32'></div>
-				</div>
-			) : (
-				<div>
-					<span className='text-sm text-zinc-500 block mb-2'>Balance</span>
-					<div className='flex items-baseline gap-2'>
-						<span className='text-4xl font-semibold text-zinc-950'>
-							{formatAmount(walletBalance?.real_time_credit_balance ?? wallet.credit_balance?.toString() ?? '0')}
-						</span>
-						<span className='text-base font-normal text-zinc-500'>credits</span>
+			<div className='p-6'>
+				{balanceLoading ? (
+					<div className='animate-pulse space-y-3'>
+						<div className='h-4 bg-zinc-100 rounded w-20'></div>
+						<div className='h-10 bg-zinc-100 rounded w-32'></div>
 					</div>
-					<p className='text-sm text-zinc-500 mt-1'>
-						{currencySymbol}
-						{formatAmount(walletBalance?.real_time_balance ?? wallet.balance?.toString() ?? '0')} value
-					</p>
-				</div>
-			)}
+				) : (
+					<div>
+						<span className='text-sm text-zinc-500 block mb-2'>Balance</span>
+						<div className='flex items-baseline gap-2'>
+							<span className='text-4xl font-semibold text-zinc-950'>
+								{formatAmount(walletBalance?.real_time_credit_balance ?? wallet.credit_balance?.toString() ?? '0')}
+							</span>
+							<span className='text-base font-normal text-zinc-500'>credits</span>
+						</div>
+						<p className='text-sm text-zinc-500 mt-1'>
+							{currencySymbol}
+							{formatAmount(walletBalance?.real_time_balance ?? wallet.balance?.toString() ?? '0')} value
+						</p>
+					</div>
+				)}
+			</div>
 		</Card>
 	);
 };
