@@ -17,6 +17,8 @@ interface Props {
 	className?: string;
 	entityType?: GROUP_ENTITY_TYPE;
 	hiddenIfEmpty?: boolean;
+	/** When false, option labels show only group name (no lookup_key). Default true. */
+	showLookupKey?: boolean;
 }
 
 const SelectGroup: FC<Props> = ({
@@ -29,6 +31,7 @@ const SelectGroup: FC<Props> = ({
 	className,
 	entityType = GROUP_ENTITY_TYPE.PRICE,
 	hiddenIfEmpty = false,
+	showLookupKey = true,
 }) => {
 	// Build filter to include entity_type so backend receives it in the filters array
 	const filterByEntityType = useMemo(
@@ -65,11 +68,11 @@ const SelectGroup: FC<Props> = ({
 		return [
 			{ label: 'None', value: '' },
 			...groupsData.items.map((group: Group) => ({
-				label: `${group.name} (${group.lookup_key})`,
+				label: showLookupKey ? `${group.name} (${group.lookup_key})` : group.name,
 				value: group.id,
 			})),
 		];
-	}, [groupsData]);
+	}, [groupsData, showLookupKey]);
 
 	// Check if component should be hidden when empty
 	const shouldHide = useMemo(() => {

@@ -8,97 +8,14 @@ import { ENTITY_STATUS } from '@/models';
 import GUIDES from '@/constants/guides';
 import { useState, useMemo } from 'react';
 import { GroupApi } from '@/api/GroupApi';
-import {
-	FilterField,
-	FilterFieldType,
-	DEFAULT_OPERATORS_PER_DATA_TYPE,
-	DataType,
-	FilterOperator,
-	SortOption,
-	SortDirection,
-	FilterCondition,
-} from '@/types/common/QueryBuilder';
 import formatDate from '@/utils/common/format_date';
 import formatChips from '@/utils/common/format_chips';
-
-const sortingOptions: SortOption[] = [
-	{ field: 'name', label: 'Name', direction: SortDirection.ASC },
-	{ field: 'created_at', label: 'Created At', direction: SortDirection.DESC },
-	{ field: 'updated_at', label: 'Updated At', direction: SortDirection.DESC },
-];
-
-const filterOptions: FilterField[] = [
-	{
-		field: 'name',
-		label: 'Name',
-		fieldType: FilterFieldType.INPUT,
-		operators: DEFAULT_OPERATORS_PER_DATA_TYPE[DataType.STRING],
-		dataType: DataType.STRING,
-	},
-	{
-		field: 'lookup_key',
-		label: 'Lookup Key',
-		fieldType: FilterFieldType.INPUT,
-		operators: DEFAULT_OPERATORS_PER_DATA_TYPE[DataType.STRING],
-		dataType: DataType.STRING,
-	},
-	{
-		field: 'status',
-		label: 'Status',
-		fieldType: FilterFieldType.MULTI_SELECT,
-		operators: [FilterOperator.IN, FilterOperator.NOT_IN],
-		dataType: DataType.ARRAY,
-		options: [
-			{ value: ENTITY_STATUS.PUBLISHED, label: 'Active' },
-			{ value: ENTITY_STATUS.ARCHIVED, label: 'Inactive' },
-		],
-	},
-	{
-		field: 'created_at',
-		label: 'Created At',
-		fieldType: FilterFieldType.DATEPICKER,
-		operators: DEFAULT_OPERATORS_PER_DATA_TYPE[DataType.DATE],
-		dataType: DataType.DATE,
-	},
-];
-
-const initialFilters: FilterCondition[] = [
-	{
-		field: 'name',
-		operator: FilterOperator.CONTAINS,
-		valueString: '',
-		dataType: DataType.STRING,
-		id: 'initial-name',
-	},
-	{
-		field: 'lookup_key',
-		operator: FilterOperator.CONTAINS,
-		valueString: '',
-		dataType: DataType.STRING,
-		id: 'initial-lookup_key',
-	},
-	{
-		field: 'status',
-		operator: FilterOperator.IN,
-		valueArray: [ENTITY_STATUS.PUBLISHED],
-		dataType: DataType.ARRAY,
-		id: 'initial-status',
-	},
-];
-
-const initialSorts: SortOption[] = [{ field: 'updated_at', label: 'Updated At', direction: SortDirection.DESC }];
+import { groupsFilterOptions, groupsInitialFilters, groupsInitialSorts, groupsSortOptions } from './groupsQueryConfig';
 
 const GroupsPage = () => {
-	const [activeGroup, setActiveGroup] = useState<Group | null>(null);
 	const [groupDrawerOpen, setGroupDrawerOpen] = useState(false);
 
 	const handleOnAdd = () => {
-		setActiveGroup(null);
-		setGroupDrawerOpen(true);
-	};
-
-	const handleEdit = (group: Group) => {
-		setActiveGroup(group);
 		setGroupDrawerOpen(true);
 	};
 
@@ -124,7 +41,7 @@ const GroupsPage = () => {
 						deleteMutationFn={(id) => GroupApi.deleteGroup(id)}
 						refetchQueryKey='fetchGroups'
 						entityName='Group'
-						edit={{ onClick: () => handleEdit(row) }}
+						edit={{ enabled: false }}
 						archive={{ enabled: row.status === ENTITY_STATUS.PUBLISHED }}
 					/>
 				),
@@ -135,26 +52,33 @@ const GroupsPage = () => {
 
 	return (
 		<Page heading='Groups' headingCTA={<AddButton onClick={handleOnAdd} />}>
-			<GroupDrawer data={activeGroup} open={groupDrawerOpen} onOpenChange={setGroupDrawerOpen} refetchQueryKeys={['fetchGroups']} />
+			<GroupDrawer data={null} open={groupDrawerOpen} onOpenChange={setGroupDrawerOpen} refetchQueryKeys={['fetchGroups']} />
 			<ApiDocsContent tags={['Groups']} />
 			<div className='space-y-6'>
 				<QueryableDataArea<Group>
 					queryConfig={{
-						filterOptions,
-						sortOptions: sortingOptions,
-						initialFilters,
-						initialSorts,
+						filterOptions: groupsFilterOptions,
+						sortOptions: groupsSortOptions,
+						initialFilters: groupsInitialFilters,
+						initialSorts: groupsInitialSorts,
 						debounceTime: 300,
 					}}
 					dataConfig={{
 						queryKey: 'fetchGroups',
 						fetchFn: async (params) => {
+							const filters = params.filters ?? [];
+							const sort = params.sort ?? [];
+							const nameFilter = filters.find((f) => f.field === 'name' && f.value?.string != null);
+							const lookupKeyFilter = filters.find((f) => f.field === 'lookup_key' && f.value?.string != null);
 							const response = await GroupApi.getGroupsByFilter({
 								entity_type: GROUP_ENTITY_TYPE.PRICE,
 								limit: params.limit,
 								offset: params.offset,
-								filters: params.filters ?? [],
-								sort: params.sort ?? [],
+								filters,
+								sort,
+								...(nameFilter?.value?.string !== undefined && nameFilter.value.string !== '' && { name: nameFilter.value.string }),
+								...(lookupKeyFilter?.value?.string !== undefined &&
+									lookupKeyFilter.value.string !== '' && { lookup_key: lookupKeyFilter.value.string }),
 							});
 							return {
 								items: response.items as Group[],

@@ -48,7 +48,10 @@ export class GroupApi {
 	}
 
 	public static async getGroupsByFilter(payload: GroupFilter) {
-		return await AxiosClient.post<ListGroupsResponse>(`${this.baseUrl}/search`, payload);
+		// Send both "sort" and "sorts" so backends that expect either key apply sorting
+		const { sort = [], ...rest } = payload;
+		const body = { ...rest, sort, sorts: sort };
+		return await AxiosClient.post<ListGroupsResponse>(`${this.baseUrl}/search`, body);
 	}
 
 	public static async addEntityToGroup(id: string, data: AddEntityToGroupRequest) {

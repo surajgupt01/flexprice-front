@@ -102,7 +102,8 @@ const UpdatePriceDetailsDrawer: FC<UpdatePriceDetailsDrawerProps> = ({ price, op
 			description: formData.description?.trim() || undefined,
 			lookup_key: formData.lookup_key?.trim() || undefined,
 			metadata: metadata,
-			group_id: formData.group_id?.trim() || undefined,
+			// Send empty string when "None" is selected so the server can clear group_id; otherwise send the id or undefined
+			group_id: formData.group_id?.trim() === '' ? '' : formData.group_id?.trim() || undefined,
 		};
 
 		updatePrice(updateDto);
@@ -165,6 +166,7 @@ const UpdatePriceDetailsDrawer: FC<UpdatePriceDetailsDrawerProps> = ({ price, op
 					value={formData.group_id}
 					onChange={(group) => setFormData({ ...formData, group_id: group?.id ?? '' })}
 					entityType={GROUP_ENTITY_TYPE.PRICE}
+					showLookupKey={false}
 				/>
 
 				<Spacer className='!h-4' />
