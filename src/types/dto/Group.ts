@@ -25,8 +25,6 @@ export interface ListGroupsResponse {
 
 export interface GroupFilter extends QueryFilter {
 	entity_type?: GROUP_ENTITY_TYPE;
-	name?: string;
-	lookup_key?: string;
 }
 
 export interface AddEntityToGroupRequest {
