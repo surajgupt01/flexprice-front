@@ -500,7 +500,7 @@ const PlanPriceTable: FC<PlanChargesTableProps> = ({ plan, onPriceUpdate }) => {
 						</div>
 					) : (
 						<>
-							<FlexpriceTable columns={chargeColumns} data={tableItems} />
+							<FlexpriceTable showEmptyRow columns={chargeColumns} data={tableItems} />
 							{(totalItems > 0 || page > 1) && (
 								<ShortPagination unit='Charges' totalItems={totalItems} pageSize={limit} prefix={PAGINATION_PREFIX.PLAN_CHARGES} />
 							)}
