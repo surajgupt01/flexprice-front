@@ -1,17 +1,19 @@
 import { Loader, Page, Select, AddButton } from '@/components/atoms';
 import usePagination from '@/hooks/usePagination';
 import { PlanApi } from '@/api/PlanApi';
+import { PriceApi } from '@/api/PriceApi';
+import EntitlementApi from '@/api/EntitlementApi';
 import { FilterOperator, DataType } from '@/types/common/QueryBuilder';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { billlingPeriodOptions } from '@/constants/constants';
 import { useState, useMemo } from 'react';
-import { PlanResponse } from '@/types';
+import { PlanResponse, PriceResponse, EntitlementResponse } from '@/types';
 import { GetAllPlansResponse } from '@/api/PlanApi';
 import { PricingCard, type PricingCardProps } from '@/components/molecules';
 import { ApiDocsContent } from '@/components/molecules';
 import { PlanDrawer } from '@/components/molecules';
-import { Price, INVOICE_CADENCE, PRICE_TYPE } from '@/models';
+import { Price, INVOICE_CADENCE, PRICE_TYPE, ENTITLEMENT_ENTITY_TYPE, PRICE_ENTITY_TYPE } from '@/models';
 
 type PriceType = {
 	currency: string;
@@ -86,7 +88,7 @@ const getPriceDisplayType = (prices: PriceType[]): PlanType => {
 };
 
 const findBestPriceCombination = (
-	plans: PlanResponse[],
+	plans: Array<PlanResponse & { prices: PriceResponse[]; entitlements: EntitlementResponse[] }>,
 	availableCurrencyOptions: Array<{ value: string }>,
 	availablePeriodOptions: Array<{ value: string }>,
 ) => {
@@ -101,7 +103,8 @@ const findBestPriceCombination = (
 				.map((plan) => ({
 					...plan,
 					prices: plan.prices?.filter(
-						(price) => price.currency.toUpperCase() === currency.value && price.billing_period === period.value && isRecurringPrice(price),
+						(price: PriceResponse) =>
+							price.currency.toUpperCase() === currency.value && price.billing_period === period.value && isRecurringPrice(price),
 					),
 				}))
 				.filter((plan) => plan.prices && plan.prices.length > 0);
@@ -122,7 +125,9 @@ const findBestPriceCombination = (
 			const testFiltered = plans
 				.map((plan) => ({
 					...plan,
-					prices: plan.prices?.filter((price) => price.currency.toUpperCase() === currency.value && price.billing_period === period.value),
+					prices: plan.prices?.filter(
+						(price: PriceResponse) => price.currency.toUpperCase() === currency.value && price.billing_period === period.value,
+					),
 				}))
 				.filter((plan) => (plan.prices?.length ?? 0) > 0);
 
@@ -147,6 +152,7 @@ const PricingPage = () => {
 	const [selectedCurrency, setSelectedCurrency] = useState<string>('');
 	const [planDrawerOpen, setPlanDrawerOpen] = useState<boolean>(false);
 
+	// Fetch plans
 	const fetchPlans = async () => {
 		return await PlanApi.getPlansByFilter({
 			limit,
@@ -160,25 +166,92 @@ const PricingPage = () => {
 				},
 			],
 			sort: [],
-			expand: 'entitlements,prices,meters,features,credit_grants',
 		});
 	};
 
 	const {
 		data: plansData,
-		isLoading,
-		isError,
+		isLoading: isLoadingPlans,
+		isError: isErrorPlans,
 	} = useQuery<GetAllPlansResponse>({
 		queryKey: ['fetchPlansPricingCard', page],
 		queryFn: fetchPlans,
 	});
 
+	// Fetch all prices for all plans
+	const { data: allPricesData, isLoading: isLoadingPrices } = useQuery({
+		queryKey: ['fetchAllPricesForPlans', plansData?.items?.map((p) => p.id)],
+		queryFn: async () => {
+			if (!plansData?.items || plansData.items.length === 0) return { items: [] };
+
+			const planIds = plansData.items.map((p) => p.id);
+			return await PriceApi.searchPrices({
+				entity_type: PRICE_ENTITY_TYPE.PLAN,
+				entity_ids: planIds,
+				limit: 1000, // Get all prices
+			});
+		},
+		enabled: !!plansData?.items && plansData.items.length > 0,
+	});
+
+	// Fetch all entitlements for all plans
+	const { data: allEntitlementsData, isLoading: isLoadingEntitlements } = useQuery({
+		queryKey: ['fetchAllEntitlementsForPlans', plansData?.items?.map((p) => p.id)],
+		queryFn: async () => {
+			if (!plansData?.items || plansData.items.length === 0) return { items: [] };
+
+			const planIds = plansData.items.map((p) => p.id);
+			return await EntitlementApi.search({
+				entity_type: ENTITLEMENT_ENTITY_TYPE.PLAN,
+				entity_ids: planIds,
+				limit: 1000, // Get all entitlements
+			});
+		},
+		enabled: !!plansData?.items && plansData.items.length > 0,
+	});
+
+	const isLoading = isLoadingPlans || isLoadingPrices || isLoadingEntitlements;
+	const isError = isErrorPlans;
+
+	// Create a map of plan IDs to their prices and entitlements
+	const planDataMap = useMemo(() => {
+		const map = new Map<string, { prices: PriceResponse[]; entitlements: EntitlementResponse[] }>();
+
+		if (!plansData?.items) return map;
+
+		plansData.items.forEach((plan) => {
+			const planPrices = allPricesData?.items?.filter((price) => price.entity_id === plan.id) || [];
+			const planEntitlements = allEntitlementsData?.items?.filter((ent) => ent.entity_id === plan.id) || [];
+
+			map.set(plan.id, {
+				prices: planPrices,
+				entitlements: planEntitlements,
+			});
+		});
+
+		return map;
+	}, [plansData, allPricesData, allEntitlementsData]);
+
+	// Combine plans with their prices and entitlements
+	const plansWithData = useMemo(() => {
+		if (!plansData?.items) return [];
+
+		return plansData.items.map((plan) => {
+			const data = planDataMap.get(plan.id);
+			return {
+				...plan,
+				prices: data?.prices || [],
+				entitlements: data?.entitlements || [],
+			};
+		});
+	}, [plansData, planDataMap]);
+
 	const { uniqueCurrencies, uniqueBillingPeriods, filteredPlans } = useMemo(() => {
-		if (!plansData?.items) {
+		if (!plansWithData || plansWithData.length === 0) {
 			return { uniqueCurrencies: [], uniqueBillingPeriods: [], filteredPlans: [] };
 		}
 
-		const plans = plansData.items;
+		const plans = plansWithData;
 
 		// Collect unique currencies and billing periods
 		const currencies = new Set<string>();
@@ -270,7 +343,7 @@ const PricingPage = () => {
 			uniqueBillingPeriods: availablePeriodOptions,
 			filteredPlans: sortedPlans,
 		};
-	}, [plansData, selectedBillingPeriod, selectedCurrency]);
+	}, [plansWithData, selectedBillingPeriod, selectedCurrency]);
 
 	const transformedPlans: PricingCardProps[] = filteredPlans.map((plan) => {
 		const prices = plan.prices as Price[];

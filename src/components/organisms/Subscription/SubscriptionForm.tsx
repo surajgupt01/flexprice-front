@@ -14,11 +14,15 @@ import {
 	CREDIT_GRANT_PERIOD,
 	CREDIT_GRANT_PERIOD_UNIT,
 	CREDIT_GRANT_SCOPE,
+	ENTITLEMENT_ENTITY_TYPE,
+	PRICE_ENTITY_TYPE,
 } from '@/models';
 import { BILLING_PERIOD, PAYMENT_TERMS_NONE, paymentTermsOptions } from '@/constants/constants';
 import { SubscriptionFormState } from '@/pages';
 import { useQuery } from '@tanstack/react-query';
-import { PlanApi } from '@/api/PlanApi';
+import { PriceApi } from '@/api/PriceApi';
+import CreditGrantApi from '@/api/CreditGrantApi';
+import EntitlementApi from '@/api/EntitlementApi';
 import AddonApi from '@/api/AddonApi';
 import { AddAddonToSubscriptionRequest } from '@/types/dto/Addon';
 import { SubscriptionDiscountTable, EntitlementOverridesTable } from '@/components/molecules';
@@ -107,9 +111,24 @@ const SubscriptionForm = ({
 		return startDate <= now;
 	};
 
+	// Fetch plan prices separately when a plan is selected
+	const { data: selectedPlanPrices } = useQuery({
+		queryKey: ['planPrices', state.selectedPlan],
+		queryFn: async () => {
+			if (!state.selectedPlan) return null;
+			const response = await PriceApi.searchPrices({
+				entity_ids: [state.selectedPlan],
+				entity_type: PRICE_ENTITY_TYPE.PLAN,
+				allow_expired_prices: false,
+			});
+			return response;
+		},
+		enabled: !!state.selectedPlan,
+	});
+
 	// Current prices for subscription-level and phase management
 	const currentPrices =
-		state.prices?.prices?.filter(
+		selectedPlanPrices?.items?.filter(
 			(price) =>
 				price.billing_period.toLowerCase() === state.billingPeriod.toLowerCase() &&
 				price.currency.toLowerCase() === state.currency.toLowerCase() &&
@@ -154,21 +173,21 @@ const SubscriptionForm = ({
 		);
 	}, [plans]);
 
-	// Get available billing periods and currencies from state.prices (fetched via getPlanById)
+	// Get available billing periods and currencies from selectedPlanPrices
 	const availableBillingPeriods = useMemo(() => {
-		if (!state.prices?.prices) return [];
-		const periods = [...new Set(state.prices.prices.map((price) => price.billing_period))];
+		if (!selectedPlanPrices?.items) return [];
+		const periods = [...new Set(selectedPlanPrices.items.map((price) => price.billing_period))];
 		return periods.map((period) => ({
 			label: toSentenceCase(period.replace('_', ' ')),
 			value: period,
 		}));
-	}, [state.prices]);
+	}, [selectedPlanPrices]);
 
 	const availableCurrencies = useMemo(() => {
-		if (!state.prices?.prices || !state.billingPeriod) return [];
+		if (!selectedPlanPrices?.items || !state.billingPeriod) return [];
 		const currencies = [
 			...new Set(
-				state.prices.prices
+				selectedPlanPrices.items
 					.filter((price) => price.billing_period.toLowerCase() === state.billingPeriod.toLowerCase())
 					.map((price) => price.currency),
 			),
@@ -177,16 +196,13 @@ const SubscriptionForm = ({
 			label: currency.toUpperCase(),
 			value: currency,
 		}));
-	}, [state.prices, state.billingPeriod]);
+	}, [selectedPlanPrices, state.billingPeriod]);
 
 	const handlePlanChange = (value: string) => {
-		// Just set the plan ID - the parent component's usePlanDetails hook will fetch the plan details
-		// and update state.prices automatically via useEffect
+		// Just set the plan ID - prices will be fetched via useQuery automatically
 		setState((prev) => ({
 			...prev,
 			selectedPlan: value,
-			// Clear prices temporarily while loading
-			prices: null,
 			// Clear price overrides and coupons when changing plans
 			priceOverrides: {},
 			linkedCoupon: null,
@@ -195,8 +211,7 @@ const SubscriptionForm = ({
 	};
 
 	const handleBillingPeriodChange = (value: string) => {
-		const selectedPlan = state.prices;
-		if (!selectedPlan?.prices) {
+		if (!selectedPlanPrices?.items) {
 			toast.error('Invalid billing period.');
 			return;
 		}
@@ -204,7 +219,9 @@ const SubscriptionForm = ({
 		// Get available currencies for the new billing period
 		const currencies = [
 			...new Set(
-				selectedPlan.prices.filter((price) => price.billing_period.toLowerCase() === value.toLowerCase()).map((price) => price.currency),
+				selectedPlanPrices.items
+					.filter((price) => price.billing_period.toLowerCase() === value.toLowerCase())
+					.map((price) => price.currency),
 			),
 		];
 		const defaultCurrency = currencies.includes(state.currency) ? state.currency : currencies[0];
@@ -248,7 +265,11 @@ const SubscriptionForm = ({
 	const { data: selectedPlanCreditGrants } = useQuery({
 		queryKey: ['creditGrants', state.selectedPlan],
 		queryFn: async () => {
-			const response = await PlanApi.getPlanCreditGrants(state.selectedPlan);
+			if (!state.selectedPlan) return null;
+			const response = await CreditGrantApi.list({
+				plan_ids: [state.selectedPlan],
+				scope: CREDIT_GRANT_SCOPE.PLAN,
+			});
 			return response;
 		},
 		enabled: !!state.selectedPlan,
@@ -308,7 +329,10 @@ const SubscriptionForm = ({
 		queryFn: async () => {
 			if (!state.selectedPlan) return null;
 			try {
-				return await PlanApi.getPlanEntitlements(state.selectedPlan);
+				return await EntitlementApi.search({
+					entity_ids: [state.selectedPlan],
+					entity_type: ENTITLEMENT_ENTITY_TYPE.PLAN,
+				});
 			} catch (error) {
 				console.warn('Failed to fetch plan entitlements:', error);
 				return null;
@@ -543,7 +567,7 @@ const SubscriptionForm = ({
 									// Remove commitment from override
 									const currentOverride = overriddenPrices[priceId];
 									if (currentOverride) {
-										const { commitment, ...restOverride } = currentOverride;
+										const { commitment: _commitment, ...restOverride } = currentOverride;
 										if (Object.keys(restOverride).length > 1) {
 											// Has other overrides, just remove commitment
 											overridePrice(priceId, restOverride);

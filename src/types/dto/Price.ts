@@ -32,7 +32,7 @@ export type SearchPricesFilter = TypedBackendFilter;
 export interface SearchPricesRequest {
 	/** Optional: scope by entity (e.g. plan). When omitted, scope via filters (e.g. group_id eq). */
 	entity_ids?: string[];
-	entity_type?: string;
+	entity_type?: PRICE_ENTITY_TYPE;
 	filters?: TypedBackendFilter[];
 	sorts?: TypedBackendSort[];
 	allow_expired_prices?: boolean;

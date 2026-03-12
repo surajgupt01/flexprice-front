@@ -11,8 +11,8 @@ const PlanOverviewTab = () => {
 
 	const {
 		data: planData,
-		isLoading,
-		isError,
+		isLoading: isPlanLoading,
+		isError: isPlanError,
 	} = useQuery({
 		queryKey: ['fetchPlan', planId],
 		queryFn: async () => {
@@ -21,19 +21,24 @@ const PlanOverviewTab = () => {
 		enabled: !!planId,
 	});
 
-	if (isLoading) {
+	if (isPlanLoading) {
 		return <Loader />;
 	}
 
-	if (isError || !planData) {
+	if (isPlanError || !planData) {
 		toast.error('Error loading plan data');
 		return null;
 	}
 
 	return (
 		<div className='space-y-6'>
-			{/* Plan Prices Table */}
-			<PlanPriceTable plan={planData as any} onPriceUpdate={() => refetchQueries(['fetchPlan', planId!])} />
+			<PlanPriceTable
+				plan={planData}
+				onPriceUpdate={() => {
+					refetchQueries(['fetchPlan', planId!]);
+					refetchQueries(['planChargesSearch', planId!]);
+				}}
+			/>
 		</div>
 	);
 };

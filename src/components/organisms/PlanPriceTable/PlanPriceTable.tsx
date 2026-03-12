@@ -9,7 +9,7 @@ import {
 	UpdatePriceDetailsDrawer,
 	QueryBuilder,
 } from '@/components/molecules';
-import { Price, Plan, PRICE_STATUS } from '@/models';
+import { Price, Plan, PRICE_STATUS, PRICE_ENTITY_TYPE } from '@/models';
 import { PriceUnit } from '@/models/PriceUnit';
 import { Plus, Trash2, Pencil, FileText } from 'lucide-react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -30,7 +30,7 @@ import { FilterField, FilterFieldType, FilterOperator, DataType, SortDirection, 
 import { sanitizeFilterConditions, sanitizeSortConditions } from '@/types/formatters/QueryBuilder';
 import usePagination, { PAGINATION_PREFIX } from '@/hooks/usePagination';
 import { ShortPagination } from '@/components/atoms';
-import type { SearchPricesResponse } from '@/types/dto';
+import type { PriceResponse, SearchPricesResponse } from '@/types/dto';
 
 // ===== FILTER FIELD NAMES (no hardcoded strings in logic) =====
 const CHARGE_FILTER_FIELD = {
@@ -47,6 +47,7 @@ const PLAN_CHARGES_PAGE_SIZE = 10;
 
 interface PlanChargesTableProps {
 	plan: Plan;
+	prices?: PriceResponse[];
 	onPriceUpdate?: () => void;
 }
 
@@ -231,7 +232,7 @@ const chargeSortOptions = [
 	{ field: CHARGE_FILTER_FIELD.BILLING_PERIOD, label: 'Billing period', direction: SortDirection.ASC as const },
 ];
 
-const PlanPriceTable: FC<PlanChargesTableProps> = ({ plan, onPriceUpdate }) => {
+const PlanPriceTable: FC<PlanChargesTableProps> = ({ plan, prices: externalPrices, onPriceUpdate }) => {
 	const navigate = useNavigate();
 	const [showTerminateModal, setShowTerminateModal] = useState(false);
 	const [selectedPriceForTermination, setSelectedPriceForTermination] = useState<Price | null>(null);
@@ -304,8 +305,6 @@ const PlanPriceTable: FC<PlanChargesTableProps> = ({ plan, onPriceUpdate }) => {
 		setSelectedPriceForTermination(null);
 	}, []);
 
-	const hasPrices = (plan.prices?.length ?? 0) > 0;
-
 	// ===== FILTER & SORT =====
 	const initialFilters = useMemo<FilterCondition[]>(
 		() => [
@@ -349,15 +348,19 @@ const PlanPriceTable: FC<PlanChargesTableProps> = ({ plan, onPriceUpdate }) => {
 		queryFn: () =>
 			PriceApi.searchPrices({
 				entity_ids: [plan.id],
-				entity_type: 'PLAN',
+				entity_type: PRICE_ENTITY_TYPE.PLAN,
 				filters: searchFilters.length > 0 ? searchFilters : undefined,
 				sorts: searchSorts.length > 0 ? searchSorts : undefined,
 				allow_expired_prices: true,
 				limit,
 				offset,
 			}),
-		enabled: !!plan.id && hasPrices,
+		enabled: !!plan.id && !externalPrices, // Only fetch if prices not provided externally
 	});
+
+	// Use external prices if provided, otherwise use fetched data
+	const pricesData = externalPrices || searchData?.items || [];
+	const hasPrices = pricesData.length > 0;
 
 	const resetPageRef = React.useRef(resetPage);
 	resetPageRef.current = resetPage;
@@ -366,7 +369,7 @@ const PlanPriceTable: FC<PlanChargesTableProps> = ({ plan, onPriceUpdate }) => {
 	}, [searchFiltersSignature]);
 
 	// Use search API response directly (no client-side filter/sort)
-	const tableItems = searchData?.items ?? [];
+	const tableItems = externalPrices || searchData?.items || [];
 	const totalFromSearch = searchData?.pagination?.total ?? 0;
 	const totalItems = totalFromSearch || Math.max(offset + tableItems.length, limit * page);
 

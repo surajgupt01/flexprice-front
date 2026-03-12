@@ -9,6 +9,7 @@ import { UsageTable, SubscriptionForm } from '@/components/organisms';
 import { Building, User, AlertTriangle } from 'lucide-react';
 
 import { AddonApi, CustomerApi, PlanApi, SubscriptionApi, TaxApi, CouponApi } from '@/api';
+import { PriceApi } from '@/api/PriceApi';
 import { refetchQueries } from '@/core/services/tanstack/ReactQueryProvider';
 import { RouteNames } from '@/core/routes/Routes';
 import { ServerError } from '@/core/axios/types';
@@ -23,16 +24,17 @@ import {
 	INVOICE_BILLING,
 	PAYMENT_TERMS,
 	SUBSCRIPTION_STATUS,
+	PRICE_ENTITY_TYPE,
 } from '@/models';
 import { InternalCreditGrantRequest, creditGrantToInternal, internalToCreateRequest } from '@/types/dto/CreditGrant';
 import { BILLING_PERIOD, PAYMENT_TERMS_NONE, SANDBOX_AUTO_CANCELLATION_DAYS } from '@/constants/constants';
 
 import {
-	PlanResponse,
 	CreateSubscriptionRequest,
 	AddAddonToSubscriptionRequest,
 	TaxRateOverride,
 	EntitlementOverrideRequest,
+	SearchPricesResponse,
 } from '@/types/dto';
 import { FilterOperator, DataType } from '@/types/common/QueryBuilder';
 import { OverrideLineItemRequest, SubscriptionPhaseCreateRequest } from '@/types/dto/Subscription';
@@ -60,7 +62,7 @@ export enum SubscriptionPhaseState {
 
 export type SubscriptionFormState = {
 	selectedPlan: string;
-	prices: PlanResponse | null;
+	prices: SearchPricesResponse | null;
 	billingPeriod: BILLING_PERIOD;
 	currency: string;
 	billingPeriodOptions: SelectOption[];
@@ -106,20 +108,9 @@ const usePlans = () => {
 					},
 				],
 				sort: [],
-				expand: 'prices,meters,credit_grants,priceunits',
 			});
 
-			try {
-				const filteredPlans = plansResponse.items.filter((plan: PlanResponse) => {
-					const hasPrices = plan.prices && plan.prices.length > 0;
-					return hasPrices;
-				});
-
-				return filteredPlans;
-			} catch (error) {
-				toast.error('Error processing plans data');
-				throw error;
-			}
+			return plansResponse.items;
 		},
 	});
 };
@@ -162,37 +153,55 @@ const useAddons = (addonIds: string[]) => {
 };
 
 const usePlanDetails = (planId: string | undefined) => {
-	return useQuery({
+	const planQuery = useQuery({
 		queryKey: ['planDetails', planId],
 		queryFn: async () => {
 			if (!planId) return null;
-			const planResponse = await PlanApi.getPlanById(planId);
-			// Filter out expired prices (end_date before now)
-			// Keep prices without end_date (they don't expire) and prices where end_date is >= now
-			if (planResponse.prices && planResponse.prices.length > 0) {
-				const now = new Date();
-				planResponse.prices = planResponse.prices.filter((price) => {
-					// Keep prices without an end_date (they don't expire)
-					if (!price.end_date) {
-						return true;
-					}
-					// Parse end_date and check if it's in the future or equal to now
-					const endDate = new Date(price.end_date);
-					// If date is invalid, keep the price (safer default)
-					if (isNaN(endDate.getTime())) {
-						return true;
-					}
-					// Only keep prices where end_date is in the future or equal to now
-					return endDate >= now;
-				});
-			}
-
-			return planResponse;
+			return await PlanApi.getPlanById(planId);
 		},
 		enabled: !!planId,
 		staleTime: 5 * 60 * 1000,
 		refetchOnWindowFocus: false,
 	});
+
+	const pricesQuery = useQuery({
+		queryKey: ['planPrices', planId],
+		queryFn: async () => {
+			if (!planId) return null;
+			const response = await PriceApi.searchPrices({
+				entity_ids: [planId],
+				entity_type: PRICE_ENTITY_TYPE.PLAN,
+				allow_expired_prices: false,
+			});
+			// Filter out expired prices based on end_date
+			const now = new Date();
+			const filteredItems = response.items.filter((price) => {
+				// Keep prices without an end_date (they don't expire)
+				if (!price.end_date) {
+					return true;
+				}
+				// Parse end_date and check if it's in the future or equal to now
+				const endDate = new Date(price.end_date);
+				// If date is invalid, keep the price (safer default)
+				if (isNaN(endDate.getTime())) {
+					return true;
+				}
+				// Only keep prices where end_date is in the future or equal to now
+				return endDate >= now;
+			});
+			return { ...response, items: filteredItems };
+		},
+		enabled: !!planId,
+		staleTime: 5 * 60 * 1000,
+		refetchOnWindowFocus: false,
+	});
+
+	return {
+		data: planQuery.data,
+		prices: pricesQuery.data,
+		isLoading: planQuery.isLoading || pricesQuery.isLoading,
+		isError: planQuery.isError || pricesQuery.isError,
+	};
 };
 
 const CreateCustomerSubscriptionPage: React.FC = () => {
@@ -268,6 +277,7 @@ const CreateCustomerSubscriptionPage: React.FC = () => {
 	const { data: subscriptionData } = useSubscriptionData(subscription_id);
 	const {
 		data: planDetails,
+		prices,
 		isLoading: isLoadingPlanDetails,
 		isError: isPlanDetailsError,
 	} = usePlanDetails(subscriptionState.selectedPlan);
@@ -338,10 +348,10 @@ const CreateCustomerSubscriptionPage: React.FC = () => {
 
 	// Sync plan details from usePlanDetails hook to state
 	useEffect(() => {
-		if (planDetails) {
-			const billingPeriods = [...new Set(planDetails.prices?.map((price) => price.billing_period) || [])];
+		if (planDetails && prices) {
+			const billingPeriods = [...new Set(prices.items?.map((price) => price.billing_period) || [])];
 			const billingPeriodOptions = billingPeriods.map((period) => ({
-				label: toSentenceCase(period.replace('_', ' ')),
+				label: toSentenceCase(period as string),
 				value: period,
 			}));
 
@@ -349,15 +359,15 @@ const CreateCustomerSubscriptionPage: React.FC = () => {
 				// Determine the billing period to use
 				const currentBillingPeriod = prev.billingPeriod;
 				const isValidBillingPeriod =
-					currentBillingPeriod && billingPeriods.some((bp) => bp.toLowerCase() === currentBillingPeriod.toLowerCase());
+					currentBillingPeriod && billingPeriods.some((bp) => (bp as string).toLowerCase() === currentBillingPeriod.toLowerCase());
 				const selectedBillingPeriod = isValidBillingPeriod
 					? currentBillingPeriod
-					: (billingPeriods[0]?.toLowerCase() as BILLING_PERIOD) || currentBillingPeriod;
+					: ((billingPeriods[0] as string)?.toLowerCase() as BILLING_PERIOD) || currentBillingPeriod;
 
 				// Determine the currency to use
 				const availableCurrencies = [
 					...new Set(
-						planDetails.prices
+						prices.items
 							?.filter((price) => price.billing_period.toLowerCase() === selectedBillingPeriod.toLowerCase())
 							.map((price) => price.currency) || [],
 					),
@@ -368,7 +378,7 @@ const CreateCustomerSubscriptionPage: React.FC = () => {
 
 				return {
 					...prev,
-					prices: planDetails,
+					prices: prices,
 					billingPeriodOptions,
 					billingPeriod: selectedBillingPeriod,
 					currency: selectedCurrency,
@@ -376,7 +386,7 @@ const CreateCustomerSubscriptionPage: React.FC = () => {
 				};
 			});
 		}
-	}, [planDetails]);
+	}, [planDetails, prices]);
 
 	const { mutate: createSubscription, isPending: isCreating } = useMutation({
 		mutationKey: ['createSubscription'],
@@ -494,7 +504,7 @@ const CreateCustomerSubscriptionPage: React.FC = () => {
 
 			// Get current prices for the selected billing period and currency
 			const currentPrices =
-				prices?.prices?.filter(
+				prices?.items?.filter(
 					(price) =>
 						price.billing_period.toLowerCase() === billingPeriod.toLowerCase() &&
 						price.currency.toLowerCase() === currency.toLowerCase() &&
@@ -607,7 +617,7 @@ const CreateCustomerSubscriptionPage: React.FC = () => {
 				sanitized.paymentTerms && sanitized.paymentTerms !== PAYMENT_TERMS_NONE ? (sanitized.paymentTerms as PAYMENT_TERMS) : undefined,
 			line_items:
 				!sanitized.sanitizedPhases && sanitized.addedSubscriptionLineItems && sanitized.addedSubscriptionLineItems.length > 0
-					? sanitized.addedSubscriptionLineItems.map(({ tempId, ...req }) => req)
+					? sanitized.addedSubscriptionLineItems.map(({ tempId: _tempId, ...req }) => req)
 					: undefined,
 		};
 
