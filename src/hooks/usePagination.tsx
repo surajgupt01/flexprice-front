@@ -11,6 +11,7 @@ export enum PAGINATION_PREFIX {
 	PLAN_CHARGES = 'plan_charges',
 	GROUP_CHARGES = 'group_charges',
 	SETTINGS_MEMBERS = 'settings_members',
+	CUSTOMER_SUBSCRIPTIONS = 'customer_subscriptions',
 }
 
 const usePagination = ({ initialLimit = 10, prefix }: UsePaginationProps = {}) => {
