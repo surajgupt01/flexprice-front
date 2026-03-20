@@ -1,7 +1,8 @@
 import { Button, FormHeader, Toggle } from '@/components/atoms';
 import { LineItem, INVOICE_TYPE } from '@/models/Invoice';
+import { formatBillingPeriod } from '@/utils/common/format_date';
 import { getCurrencySymbol } from '@/utils/common/helper_functions';
-import { FC, useState } from 'react';
+import { FC } from 'react';
 import { RefreshCw } from 'lucide-react';
 interface Props {
 	data: LineItem[];
@@ -15,13 +16,10 @@ interface Props {
 	refetch?: () => void;
 	subtitle?: string;
 	invoiceType?: INVOICE_TYPE;
+	/** When true, zero-amount line items are included (backend returns them). When false, backend hides them. */
+	showZeroCharges?: boolean;
+	onShowZeroChargesChange?: (show: boolean) => void;
 }
-
-const formatToShortDate = (dateString: string): string => {
-	const date = new Date(dateString);
-	const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-	return date.toLocaleDateString('en-US', options);
-};
 
 const formatAmount = (amount: number, currency: string): string => {
 	return `${getCurrencySymbol(currency)}${amount}`;
@@ -49,9 +47,10 @@ const SubscriptionPreviewLineItemTable: FC<Props> = ({
 	discount,
 	amount_due,
 	subtotal,
+	showZeroCharges = false,
+	onShowZeroChargesChange,
 }) => {
-	const [showZeroCharges, setShowZeroCharges] = useState(false);
-	const filteredData = data.filter((item) => showZeroCharges || Number(item.amount) !== 0);
+	const displayData = data;
 
 	return (
 		<div className='bg-white'>
@@ -80,9 +79,11 @@ const SubscriptionPreviewLineItemTable: FC<Props> = ({
 					)}
 				</div>
 			</div>
-			<div className='flex items-center gap-4 mb-4'>
-				<Toggle checked={showZeroCharges} onChange={() => setShowZeroCharges(!showZeroCharges)} label='Show Zero Charges' />
-			</div>
+			{onShowZeroChargesChange && (
+				<div className='flex items-center gap-4 mb-4'>
+					<Toggle checked={showZeroCharges ?? false} onChange={() => onShowZeroChargesChange(!showZeroCharges)} label='Show Zero Charges' />
+				</div>
+			)}
 
 			{/* Line Items Table */}
 			<div className='overflow-x-auto mb-8'>
@@ -101,7 +102,7 @@ const SubscriptionPreviewLineItemTable: FC<Props> = ({
 						</tr>
 					</thead>
 					<tbody>
-						{filteredData?.map((item, index) => {
+						{displayData?.map((item, index) => {
 							return (
 								<tr key={index} className='border-b border-gray-100'>
 									<td className='py-4 px-0 text-sm text-gray-900'>{item.display_name ?? '--'}</td>
@@ -110,9 +111,7 @@ const SubscriptionPreviewLineItemTable: FC<Props> = ({
 									)}
 									{invoiceType === INVOICE_TYPE.SUBSCRIPTION && (
 										<td className='py-4 px-4 text-sm text-gray-600'>
-											{item.period_start && item.period_end
-												? `${formatToShortDate(item.period_start)} - ${formatToShortDate(item.period_end)}`
-												: '--'}
+											{item.period_start && item.period_end ? formatBillingPeriod(item.period_start, item.period_end) : '--'}
 										</td>
 									)}
 									<td className='py-4 px-4 text-center text-sm text-gray-600'>{item.quantity ? item.quantity : '--'}</td>

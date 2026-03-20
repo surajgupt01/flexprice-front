@@ -9,7 +9,7 @@ import { useBreadcrumbsStore } from '@/store/useBreadcrumbsStore';
 import { CustomerApi, SubscriptionApi, TaxApi } from '@/api';
 import { formatDateShort, getCurrencySymbol } from '@/utils/common/helper_functions';
 import { useQuery } from '@tanstack/react-query';
-import { FC, useEffect } from 'react';
+import { FC, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useParams, Link } from 'react-router';
 import { INVOICE_TYPE } from '@/models/Invoice';
@@ -21,7 +21,7 @@ import { BILLING_PERIOD } from '@/constants/constants';
 import { ExternalLink } from 'lucide-react';
 
 function getCommitmentPeriodLabel(subscription: SubscriptionType | undefined): string {
-	const period = subscription?.billing_period;
+	const period = subscription?.commitment_duration;
 	const count = subscription?.billing_period_count ?? 1;
 
 	if (!period) return '--';
@@ -74,10 +74,26 @@ const CustomerSubscriptionDetailsPage: FC = () => {
 		enabled: !!subscriptionDetails?.invoicing_customer_id && subscriptionDetails.invoicing_customer_id !== subscriptionDetails?.customer_id,
 	});
 
-	const { data, isLoading, isError, refetch } = useQuery({
-		queryKey: ['subscriptionInvoices', subscription_id],
+	const [showZeroCharges, setShowZeroCharges] = useState(false);
+
+	const {
+		data,
+		isLoading: isPreviewLoading,
+		isError,
+		refetch,
+	} = useQuery({
+		queryKey: [
+			'subscriptionInvoices',
+			subscription_id,
+			subscriptionDetails?.current_period_start,
+			subscriptionDetails?.current_period_end,
+			showZeroCharges,
+		],
 		queryFn: async () => {
-			return await SubscriptionApi.getSubscriptionInvoicesPreview({ subscription_id: subscription_id! });
+			return await SubscriptionApi.getSubscriptionInvoicesPreview({
+				subscription_id: subscription_id!,
+				hide_zero_charges_line_items: !showZeroCharges,
+			});
 		},
 		enabled:
 			!!subscriptionDetails &&
@@ -91,7 +107,7 @@ const CustomerSubscriptionDetailsPage: FC = () => {
 		queryKey: ['subscriptionTaxAssociations', subscription_id],
 		queryFn: async () => {
 			return await TaxApi.listTaxAssociations({
-				limit: 100,
+				limit: 1000,
 				offset: 0,
 				entity_id: subscription_id!,
 				entity_type: TAXRATE_ENTITY_TYPE.SUBSCRIPTION,
@@ -120,7 +136,8 @@ const CustomerSubscriptionDetailsPage: FC = () => {
 		}
 	}, [subscriptionDetails, updateBreadcrumb, customer, customerId]);
 
-	if (isLoading || isSubscriptionDetailsLoading) {
+	// Load subscription first; show page as soon as subscription is ready (preview loads separately below)
+	if (isSubscriptionDetailsLoading) {
 		return (
 			<Page>
 				<Skeleton className='h-48' />
@@ -346,22 +363,54 @@ const CustomerSubscriptionDetailsPage: FC = () => {
 				</Card>
 			)}
 
-			{subscriptionDetails?.subscription_status !== SUBSCRIPTION_STATUS.DRAFT && (data?.line_items?.length ?? 0) > 0 && (
-				<div className='card !mt-4'>
-					<SubscriptionPreviewLineItemTable
-						discount={data?.total_discount}
-						subtotal={data?.subtotal}
-						invoiceType={data?.invoice_type as INVOICE_TYPE}
-						refetch={refetch}
-						currency={data?.currency}
-						amount_due={data?.amount_due}
-						tax={data?.total_tax}
-						title='Upcoming Invoices'
-						subtitle={`This is a preview of the invoice that will be billed on ${formatDateShort(subscriptionDetails?.current_period_end ?? '')}. It may change if subscription is updated.`}
-						data={data?.line_items ?? []}
-					/>
-				</div>
-			)}
+			{/* Upcoming Invoices: show card with header immediately; preview API can be slow so we show a dedicated loader */}
+			{subscriptionDetails?.subscription_status !== SUBSCRIPTION_STATUS.DRAFT &&
+				subscriptionDetails?.subscription_status !== SUBSCRIPTION_STATUS.CANCELLED &&
+				subscriptionDetails?.subscription_status !== SUBSCRIPTION_STATUS.TRIALING && (
+					<div className='card !mt-4'>
+						{isPreviewLoading ? (
+							<>
+								<FormHeader
+									variant='sub-header'
+									titleClassName='font-semibold text-gray-900'
+									subtitleClassName='text-sm text-gray-500 !mb-0 !mt-1'
+									title='Upcoming Invoices'
+									subtitle={`This is a preview of the invoice that will be billed on ${formatDateShort(subscriptionDetails?.current_period_end ?? '')}. It may change if subscription is updated.`}
+								/>
+								<Spacer className='!my-4' />
+								<Skeleton className='h-64 w-full' />
+								<Spacer className='!my-4' />
+								<div className='flex justify-end'>
+									<Skeleton className='h-8 w-48' />
+								</div>
+							</>
+						) : (data?.line_items?.length ?? 0) > 0 ? (
+							<SubscriptionPreviewLineItemTable
+								discount={data?.total_discount}
+								subtotal={data?.subtotal}
+								invoiceType={data?.invoice_type as INVOICE_TYPE}
+								refetch={refetch}
+								currency={data?.currency}
+								amount_due={data?.amount_due}
+								tax={data?.total_tax}
+								title='Upcoming Invoices'
+								subtitle={`This is a preview of the invoice that will be billed on ${formatDateShort(subscriptionDetails?.current_period_end ?? '')}. It may change if subscription is updated.`}
+								data={data?.line_items ?? []}
+								showZeroCharges={showZeroCharges}
+								onShowZeroChargesChange={setShowZeroCharges}
+							/>
+						) : (
+							<>
+								<FormHeader
+									variant='sub-header'
+									titleClassName='font-semibold text-gray-900'
+									title='Upcoming Invoices'
+									subtitle={`No line items for the period ending ${formatDateShort(subscriptionDetails?.current_period_end ?? '')}.`}
+								/>
+							</>
+						)}
+					</div>
+				)}
 
 			<UpcomingCreditGrantApplicationsTable data={upcomingCreditGrantApplications?.items ?? []} customerId={customerId} />
 		</div>

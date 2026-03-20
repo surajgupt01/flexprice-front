@@ -28,7 +28,7 @@ import { getPlanPriceSyncWorkflowFilters } from '@/constants/workflow';
 import { useBreadcrumbsStore } from '@/store/useBreadcrumbsStore';
 import { ServerError } from '@/core/axios/types';
 import { INVOICE_CADENCE } from '@/models';
-import { SortDirection } from '@/types/common/QueryBuilder';
+import { DataType, FilterOperator, SortDirection } from '@/types/common/QueryBuilder';
 
 export const formatInvoiceCadence = (cadence: string): string => {
 	switch (cadence.toUpperCase()) {
@@ -75,7 +75,13 @@ const PlanDetailsPage = () => {
 	} = useQuery({
 		queryKey: ['fetchPlan', planId],
 		queryFn: async () => {
-			return await PlanApi.getPlanById(planId!);
+			const response = await PlanApi.getPlansByFilter({
+				filters: [{ field: 'id', operator: FilterOperator.EQUAL, data_type: DataType.STRING, value: { string: planId } }],
+				limit: 1,
+				offset: 0,
+				sort: [],
+			});
+			return response.items[0] ?? null;
 		},
 		enabled: !!planId,
 	});
@@ -225,7 +231,7 @@ const PlanDetailsPage = () => {
 										variant='outline'
 										className='flex gap-2'>
 										<RefreshCw />
-										Sync
+										Sync Usage Charges
 									</Button>
 								</span>
 							</TooltipTrigger>

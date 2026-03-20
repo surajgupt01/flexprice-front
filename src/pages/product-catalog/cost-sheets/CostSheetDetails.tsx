@@ -1,5 +1,6 @@
-import { Button, CardHeader, Chip, Loader, Page, Spacer, NoDataCard } from '@/components/atoms';
+import { Button, CardHeader, Chip, Loader, Page, ShortPagination, Spacer, NoDataCard } from '@/components/atoms';
 import { ApiDocsContent, ColumnData, FlexpriceTable, CostSheetDrawer } from '@/components/molecules';
+import usePagination, { PAGINATION_PREFIX } from '@/hooks/usePagination';
 import { API_DOCS_TAGS } from '@/constants/apiDocsTags';
 import { DetailsCard } from '@/components/molecules';
 import { RouteNames } from '@/core/routes/Routes';
@@ -7,6 +8,8 @@ import { Price } from '@/models/Price';
 import { ENTITY_STATUS } from '@/models';
 import { useBreadcrumbsStore } from '@/store/useBreadcrumbsStore';
 import CostSheetApi from '@/api/CostSheetApi';
+import { PriceApi } from '@/api/PriceApi';
+import { PRICE_ENTITY_TYPE } from '@/models/Price';
 import { getPriceTypeLabel } from '@/utils/common/helper_functions';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { EyeOff, Plus, Pencil } from 'lucide-react';
@@ -17,6 +20,7 @@ import { Card } from '@/components/atoms';
 import formatChips from '@/utils/common/format_chips';
 import { ChargeValueCell } from '@/components/molecules';
 import { BILLING_PERIOD } from '@/constants/constants';
+import { DataType, FilterOperator } from '@/types/common/QueryBuilder';
 
 const formatBillingPeriod = (billingPeriod: string) => {
 	switch (billingPeriod.toUpperCase()) {
@@ -116,6 +120,34 @@ const CostSheetDetails = () => {
 	});
 
 	const { updateBreadcrumb } = useBreadcrumbsStore();
+	const { limit, offset } = usePagination({
+		initialLimit: 10,
+		prefix: PAGINATION_PREFIX.COST_SHEET_CHARGES,
+	});
+
+	const { data: pricesResponse, isLoading: pricesLoading } = useQuery({
+		queryKey: ['costSheetCharges', id, limit, offset],
+		queryFn: () =>
+			PriceApi.searchPrices({
+				filters: [
+					{
+						field: 'entity_type',
+						operator: FilterOperator.EQUAL,
+						data_type: DataType.STRING,
+						value: { string: PRICE_ENTITY_TYPE.COST_SHEET },
+					},
+					{
+						field: 'entity_id',
+						operator: FilterOperator.EQUAL,
+						data_type: DataType.STRING,
+						value: { string: id! },
+					},
+				],
+				limit,
+				offset,
+			}),
+		enabled: !!id && !!costSheetData,
+	});
 
 	useEffect(() => {
 		if (costSheetData?.name) {
@@ -177,14 +209,21 @@ const CostSheetDetails = () => {
 				data={costSheetData}
 				open={costSheetDrawerOpen}
 				onOpenChange={setCostSheetDrawerOpen}
-				refetchQueryKeys={['fetchCostSheet']}
+				refetchQueryKeys={['fetchCostSheet', 'costSheetCharges']}
 			/>
 			<ApiDocsContent tags={[...API_DOCS_TAGS.Costs]} />
 			<div className='space-y-6'>
 				<DetailsCard variant='stacked' title='Cost Sheet Details' data={costSheetDetails} />
 
-				{/* cost sheet charges table */}
-				{(costSheetData?.prices?.length ?? 0) > 0 ? (
+				{/* cost sheet charges table (prices from Price API by cost sheet id) */}
+				{pricesLoading ? (
+					<Card variant='notched'>
+						<CardHeader title='Charges' />
+						<div className='p-8 flex justify-center'>
+							<Loader />
+						</div>
+					</Card>
+				) : (pricesResponse?.pagination?.total ?? 0) > 0 ? (
 					<Card variant='notched'>
 						<CardHeader
 							title='Charges'
@@ -194,7 +233,12 @@ const CostSheetDetails = () => {
 								</Button>
 							}
 						/>
-						<FlexpriceTable columns={chargeColumns} data={costSheetData?.prices ?? []} />
+						<FlexpriceTable columns={chargeColumns} data={pricesResponse?.items ?? []} />
+						<ShortPagination
+							unit='charges'
+							totalItems={pricesResponse?.pagination?.total ?? 0}
+							prefix={PAGINATION_PREFIX.COST_SHEET_CHARGES}
+						/>
 					</Card>
 				) : (
 					<NoDataCard

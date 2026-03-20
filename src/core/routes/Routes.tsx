@@ -75,6 +75,7 @@ import {
 	WebhookDashboard,
 	// Settings pages
 	Billing as BillingPage,
+	SettingsDashboard,
 	// Insights tools pages
 	Integrations,
 	IntegrationDetails,
@@ -181,6 +182,7 @@ export const RouteNames = {
 
 	// footer
 	onboarding: '/onboarding',
+	settings: '/settings',
 	customerBilling: '/settings/billing',
 
 	// checkout (public - for invoice payments)
@@ -223,6 +225,10 @@ export const MainRouter = createBrowserRouter([
 	{
 		path: RouteNames.checkout,
 		element: <CheckoutPage />,
+   },
+   {
+		path: RouteNames.onboarding,
+		element: <OnboardingTenant />,
 	},
 	// private routes
 	{
@@ -563,8 +569,8 @@ export const MainRouter = createBrowserRouter([
 				],
 			},
 			{
-				path: RouteNames.onboarding,
-				element: <OnboardingTenant />,
+				path: RouteNames.settings,
+				element: <SettingsDashboard />,
 			},
 			{
 				path: RouteNames.customerBilling,

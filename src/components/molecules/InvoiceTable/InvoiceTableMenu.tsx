@@ -28,6 +28,7 @@ const InvoiceTableMenu: FC<Props> = ({ data }) => {
 			toast.success('Communication triggered');
 			refetchQueries(['fetchInvoice', data.id]);
 			refetchQueries(['fetchInvoices']);
+			refetchQueries(['invoice', data.customer_id]);
 		},
 		onError: (error: ServerError) => {
 			toast.error(error.error.message || 'Unable to trigger communication');
@@ -54,6 +55,7 @@ const InvoiceTableMenu: FC<Props> = ({ data }) => {
 			toast.success('Invoice recalculation has been triggered. The replacement invoice will be available once the process completes.');
 			refetchQueries(['fetchInvoice', data.id]);
 			refetchQueries(['fetchInvoices']);
+			refetchQueries(['invoice', data.customer_id]);
 		},
 		onError: (error: ServerError) => {
 			toast.error(error.error.message || 'Unable to recalculate invoice');
@@ -97,7 +99,9 @@ const InvoiceTableMenu: FC<Props> = ({ data }) => {
 				});
 			},
 			disabled:
-				data?.payment_status === PAYMENT_STATUS.SUCCEEDED || data?.invoice_status === INVOICE_STATUS.VOIDED || data.amount_remaining === 0,
+				data?.payment_status === PAYMENT_STATUS.SUCCEEDED ||
+				data?.invoice_status === INVOICE_STATUS.VOIDED ||
+				(data?.amount_remaining ?? 0) === 0,
 		},
 		{
 			label: 'Update Invoice Status',
@@ -160,6 +164,7 @@ const InvoiceTableMenu: FC<Props> = ({ data }) => {
 		refetchQueries(['fetchInvoice', data.id]);
 		refetchQueries(['payments', data.id]);
 		refetchQueries(['fetchInvoices']);
+		refetchQueries(['invoice', data.customer_id]);
 	};
 	return (
 		<div>
@@ -194,7 +199,7 @@ const InvoiceTableMenu: FC<Props> = ({ data }) => {
 				destination_id={data.id}
 				destination_type={PAYMENT_DESTINATION_TYPE.INVOICE}
 				customer_id={data.customer_id}
-				max_amount={Number(data.amount_remaining)}
+				max_amount={Number(data?.amount_remaining ?? 0)}
 				currency={data.currency}
 				onSuccess={handlePaymentSuccess}
 			/>
