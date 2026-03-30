@@ -2,6 +2,7 @@ export interface RevenueDashboardRequest {
 	period_start: string;
 	period_end: string;
 	customer_ids: string[];
+	window_size?: 'DAY' | 'MONTH';
 }
 
 export interface RevenueDashboardSummary {
@@ -23,7 +24,18 @@ export interface RevenueDashboardItem {
 	voice_minutes?: number | string | null;
 }
 
+export interface RevenueDashboardGraphPoint {
+	label: string;
+	value: string;
+}
+
+export interface RevenueDashboardGraph {
+	total_revenue?: RevenueDashboardGraphPoint[];
+	voice_minutes?: RevenueDashboardGraphPoint[];
+}
+
 export interface RevenueDashboardResponse {
 	summary: RevenueDashboardSummary;
 	items: RevenueDashboardItem[];
+	graph?: RevenueDashboardGraph | null;
 }

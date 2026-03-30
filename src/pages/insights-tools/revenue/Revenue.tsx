@@ -1,11 +1,18 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Page, Select } from '@/components/atoms';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { RedirectCell, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/molecules';
 import { getCurrencySymbol } from '@/utils';
+import { cn } from '@/lib/utils';
 import RevenueDashboardApi from '@/api/RevenueDashboardApi';
 import { RouteNames } from '@/core/routes/Routes';
+import type { RevenueDashboardGraphPoint } from '@/types/dto/RevenueDashboard';
 
 type RevenueFilterValue = 'this_month' | 'this_quarter' | 'this_year' | 'last_month' | 'last_quarter' | 'last_year';
 
@@ -78,9 +85,28 @@ const toNumberOrNull = (value: unknown): number | null => {
 	return Number.isFinite(numeric) ? numeric : null;
 };
 
+const GRAPH_ELIGIBLE: RevenueFilterValue[] = ['this_quarter', 'last_quarter', 'this_year', 'last_year'];
+const PAGE_SIZE = 20;
+
 const Revenue = () => {
-	const [selectedFilter, setSelectedFilter] = useState<RevenueFilterValue>('this_month');
+	const [selectedFilter, setSelectedFilter] = useState<RevenueFilterValue>('this_quarter');
+	const [currentPage, setCurrentPage] = useState(1);
+	const [search, setSearch] = useState('');
 	const { start, end } = useMemo(() => getDateRangeForPeriod(selectedFilter), [selectedFilter]);
+
+	const showGraph = GRAPH_ELIGIBLE.includes(selectedFilter);
+	const window_size: 'MONTH' | undefined = showGraph ? 'MONTH' : undefined;
+
+	const handleFilterChange = (value: RevenueFilterValue) => {
+		setSelectedFilter(value);
+		setCurrentPage(1);
+		setSearch('');
+	};
+
+	const handleSearch = (value: string) => {
+		setSearch(value);
+		setCurrentPage(1);
+	};
 
 	const { data, isLoading } = useQuery({
 		queryKey: ['revenue-dashboard', selectedFilter],
@@ -89,12 +115,18 @@ const Revenue = () => {
 				period_start: start.toISOString(),
 				period_end: end.toISOString(),
 				customer_ids: [],
+				window_size,
 			});
 		},
 	});
 
 	const summary = data?.summary;
 	const items = data?.items ?? [];
+	const filteredItems = search.trim()
+		? items.filter((row) => (row.customer_name || row.external_customer_id || '').toLowerCase().includes(search.trim().toLowerCase()))
+		: items;
+	const totalPages = Math.max(1, Math.ceil(filteredItems.length / PAGE_SIZE));
+	const pagedItems = filteredItems.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 	const hasRows = items.length > 0;
 	const hasAnyMetricData = [
 		toNumberOrNull(summary?.total_revenue),
@@ -114,12 +146,23 @@ const Revenue = () => {
 		currency: 'usd',
 	};
 
+	const graph = data?.graph;
+	const graphCharts: { key: 'total_revenue' | 'voice_minutes'; title: string; type: 'currency' | 'minutes' }[] = [];
+	if (showGraph && graph) {
+		if ((graph.total_revenue ?? []).length > 0) {
+			graphCharts.push({ key: 'total_revenue', title: 'Net Revenue', type: 'currency' });
+		}
+		if ((graph.voice_minutes ?? []).length > 0) {
+			graphCharts.push({ key: 'voice_minutes', title: 'Voice Minutes', type: 'minutes' });
+		}
+	}
+
 	return (
 		<Page
 			heading='Revenue'
 			headingCTA={
 				<div className='w-[220px]'>
-					<Select options={FILTER_OPTIONS} value={selectedFilter} onChange={(value) => setSelectedFilter(value as RevenueFilterValue)} />
+					<Select options={FILTER_OPTIONS} value={selectedFilter} onChange={(value) => handleFilterChange(value as RevenueFilterValue)} />
 				</div>
 			}>
 			<div className='space-y-6 pt-3'>
@@ -133,7 +176,7 @@ const Revenue = () => {
 									loading={isLoading}
 								/>
 								<MetricTile
-									title='Fixed Contract Revenue'
+									title='Contract Revenue'
 									value={formatCurrency(normalizedSummary.fixedContractRevenue, normalizedSummary.currency)}
 									loading={isLoading}
 								/>
@@ -142,8 +185,8 @@ const Revenue = () => {
 									value={formatCurrency(normalizedSummary.usageRevenue, normalizedSummary.currency)}
 									loading={isLoading}
 								/>
-								<MetricTile title='Total Minutes' value={formatInteger(normalizedSummary.totalMinutes)} loading={isLoading} />
-								<MetricTile title='CPM' value={formatDecimal(normalizedSummary.cpm)} loading={isLoading} isLast />
+								<MetricTile title='Voice Minutes' value={formatInteger(normalizedSummary.totalMinutes)} loading={isLoading} />
+								<MetricTile title='Cost / Minute' value={formatDecimal(normalizedSummary.cpm)} loading={isLoading} isLast />
 							</div>
 						</div>
 					</div>
@@ -155,7 +198,7 @@ const Revenue = () => {
 								<p className='text-sm text-zinc-600 mt-2'>
 									Not enough revenue data is available in the selected range to show this statistics.
 								</p>
-								<Button onClick={() => setSelectedFilter('this_month')} className='mt-4'>
+								<Button onClick={() => setSelectedFilter('this_quarter')} className='mt-4'>
 									View latest data
 								</Button>
 							</div>
@@ -163,22 +206,58 @@ const Revenue = () => {
 					)}
 				</div>
 
+				{showGraph && (isLoading || graphCharts.length > 0) && (
+					<div className='pt-2'>
+						<div className={`grid grid-cols-1 gap-4 ${graphCharts.length === 1 ? 'md:grid-cols-1' : 'md:grid-cols-2'}`}>
+							{isLoading
+								? [0, 1].map((i) => (
+										<Card key={i} className='shadow-sm border border-gray-200'>
+											<CardHeader className='pb-2'>
+												<Skeleton className='h-4 w-32' />
+											</CardHeader>
+											<CardContent>
+												<Skeleton className='h-56 w-full' />
+											</CardContent>
+										</Card>
+									))
+								: graphCharts.map((chart) => (
+										<RevenueBarChart key={chart.key} title={chart.title} data={graph![chart.key]!} type={chart.type} />
+									))}
+						</div>
+					</div>
+				)}
+
 				<div className='pt-8'>
-					<h2 className='text-lg font-medium text-gray-900 mb-4'>Revenue by Customer</h2>
 					<div className='rounded-md border border-gray-200 bg-white overflow-hidden shadow-sm'>
+						<div className='flex items-center justify-between px-4 py-2.5 border-b border-gray-200 bg-white'>
+							<div className='relative flex items-center w-64'>
+								<Search className='absolute left-2.5 h-3.5 w-3.5 text-gray-400 pointer-events-none' />
+								<Input
+									placeholder='Search customers...'
+									value={search}
+									onChange={(e) => handleSearch(e.target.value)}
+									className='pl-8 h-8 text-[13px] border-gray-200 bg-gray-50 focus:bg-white placeholder:text-gray-400'
+								/>
+							</div>
+							{search.trim() && (
+								<p className='text-[12px] text-gray-400'>
+									{filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''}
+								</p>
+							)}
+						</div>
 						<Table>
 							<TableHeader className='h-10 bg-gray-50 border-b border-gray-200 rounded-t-md'>
 								<TableRow className='rounded-t-md border-b border-gray-200'>
 									<TableHead className='rounded-tl-md pl-4 font-semibold text-gray-700 text-[13px]'>Customer</TableHead>
 									<TableHead className='font-semibold text-gray-700 text-[13px]'>Net Revenue</TableHead>
-									<TableHead className='font-semibold text-gray-700 text-[13px]'>Fixed Contract Revenue</TableHead>
+									<TableHead className='font-semibold text-gray-700 text-[13px]'>Contract Revenue</TableHead>
 									<TableHead className='font-semibold text-gray-700 text-[13px]'>Usage Revenue</TableHead>
-									<TableHead className='font-semibold text-gray-700 text-[13px]'>Total Minutes</TableHead>
-									<TableHead className='rounded-tr-md font-semibold text-gray-700 text-[13px]'>CPM</TableHead>
+									<TableHead className='font-semibold text-gray-700 text-[13px]'>Voice Minutes</TableHead>
+									<TableHead className='rounded-tr-md font-semibold text-gray-700 text-[13px]'>Cost / Minute</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
-								{items.map((row) => (
+								{pagedItems.map((row) => (
 									<TableRow
 										key={`${row.customer_id}:${row.external_customer_id}`}
 										className='h-10 align-middle border-b border-gray-200 bg-white hover:bg-gray-50/50 transition-colors'>
@@ -206,16 +285,45 @@ const Revenue = () => {
 										<TableCell className='py-2.5 font-normal text-gray-600 text-[13px]'>{formatDecimal(toNumberOrNull(row.cpm))}</TableCell>
 									</TableRow>
 								))}
-								{items.length === 0 && (
+								{pagedItems.length === 0 && (
 									<TableRow className='bg-white'>
 										<TableCell colSpan={6} className='pl-4 py-4 font-normal text-gray-500 text-[13px]'>
-											--
+											{search.trim() ? 'No customers match your search.' : '--'}
 										</TableCell>
 									</TableRow>
 								)}
 							</TableBody>
 						</Table>
 					</div>
+					{filteredItems.length > 0 && totalPages > 1 && (
+						<div className='flex items-center justify-between py-4'>
+							<p className='text-sm text-gray-500 font-light'>
+								Showing <span className='font-normal'>{(currentPage - 1) * PAGE_SIZE + 1}</span> to{' '}
+								<span className='font-normal'>{Math.min(currentPage * PAGE_SIZE, filteredItems.length)}</span> of{' '}
+								<span className='font-normal'>{filteredItems.length}</span> Customers
+							</p>
+							<div className='flex items-center space-x-2'>
+								<Button
+									type='button'
+									variant='outline'
+									size='icon'
+									onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+									disabled={currentPage === 1}
+									className={cn('size-8', currentPage === 1 && 'text-gray-300 cursor-not-allowed')}>
+									<ChevronLeft className='h-4 w-4' />
+								</Button>
+								<Button
+									type='button'
+									variant='outline'
+									size='icon'
+									onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+									disabled={currentPage === totalPages}
+									className={cn('size-8', currentPage === totalPages && 'text-gray-300 cursor-not-allowed')}>
+									<ChevronRight className='h-4 w-4' />
+								</Button>
+							</div>
+						</div>
+					)}
 				</div>
 			</div>
 		</Page>
@@ -239,6 +347,54 @@ const MetricTile = ({
 			<p className='text-[12px] leading-4 text-zinc-600 whitespace-normal break-words'>{title}</p>
 			<p className='mt-4 text-[22px] leading-[1.2] font-medium text-zinc-900'>{loading ? '...' : value}</p>
 		</div>
+	);
+};
+
+const RevenueBarChart = ({ title, data, type }: { title: string; data: RevenueDashboardGraphPoint[]; type: 'currency' | 'minutes' }) => {
+	const chartData = data.map((point) => ({
+		label: point.label,
+		value: toNumberOrNull(point.value) ?? 0,
+	}));
+
+	const formatYAxis = (val: number) => {
+		if (type === 'currency') {
+			if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(1)}M`;
+			if (val >= 1_000) return `$${(val / 1_000).toFixed(0)}K`;
+			return `$${val.toLocaleString()}`;
+		}
+		if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1)}M`;
+		if (val >= 1_000) return `${(val / 1_000).toFixed(0)}K`;
+		return val.toLocaleString(undefined, { maximumFractionDigits: 0 });
+	};
+
+	const formatTooltip = (val: number) => {
+		if (type === 'currency') {
+			return [`$ ${val.toLocaleString(undefined, { maximumFractionDigits: 2 })}`, title];
+		}
+		return [val.toLocaleString(undefined, { maximumFractionDigits: 2 }), title];
+	};
+
+	return (
+		<Card className='shadow-sm border border-gray-200 bg-white'>
+			<CardHeader className='pb-2 pt-5 px-5'>
+				<CardTitle className='text-sm font-medium text-zinc-600'>{title}</CardTitle>
+			</CardHeader>
+			<CardContent className='px-5 pb-5'>
+				<ResponsiveContainer width='100%' height={220}>
+					<BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
+						<CartesianGrid strokeDasharray='3 3' stroke='#f0f0f0' vertical={false} />
+						<XAxis dataKey='label' tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickMargin={8} />
+						<YAxis tickLine={false} axisLine={false} tick={{ fontSize: 12, fill: '#71717a' }} tickFormatter={formatYAxis} width={64} />
+						<Tooltip
+							cursor={{ fill: '#f4f4f5' }}
+							formatter={formatTooltip}
+							contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: 13 }}
+						/>
+						<Bar dataKey='value' fill='#22c55e' radius={[4, 4, 0, 0]} maxBarSize={48} />
+					</BarChart>
+				</ResponsiveContainer>
+			</CardContent>
+		</Card>
 	);
 };
 
