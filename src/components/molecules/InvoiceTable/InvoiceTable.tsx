@@ -67,7 +67,7 @@ const InvoiceTable: FC<Props> = ({ data }) => {
 			render: (row: Invoice) => getStatusChip(row.invoice_status),
 		},
 		{
-			title: 'Customer',
+			title: 'Billing Entity',
 			render: (row: Invoice) => {
 				if (!row.customer?.name || !row.customer?.id) {
 					return '--';
