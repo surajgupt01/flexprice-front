@@ -104,7 +104,7 @@ const EnvironmentCopier: React.FC<Props> = ({ isOpen, onOpenChange, sourceEnviro
 		handleOpenChange(false);
 	}, [handleOpenChange]);
 
-	const isSubmitDisabled = isPending || (isNewEnvironment && !name.trim());
+	const isSubmitDisabled = isPending || !sourceEnvironment?.id || (isNewEnvironment && !name.trim());
 
 	return (
 		<Dialog
