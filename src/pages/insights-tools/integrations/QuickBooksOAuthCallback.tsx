@@ -66,14 +66,24 @@ const QuickBooksOAuthCallback = () => {
 			return;
 		}
 
+		if (isQuickBooks && !realmId) {
+			setError('Missing QuickBooks realm ID');
+			toast.error('QuickBooks authorization failed: Missing realm ID');
+			setTimeout(() => {
+				navigate(providerRoute);
+			}, 3000);
+			return;
+		}
+
 		if (!isQuickBooks && !zohoOrganizationId) {
 			setError('Zoho organization ID is missing. Please restart the connection flow.');
 			toast.error('Zoho organization ID not found. Please reconnect.');
 			setTimeout(() => {
 				navigate(providerRoute);
 			}, 3000);
+			return;
 		}
-	}, [code, state, sessionId, errorParam, navigate, providerRoute, providerName, isQuickBooks, zohoOrganizationId]);
+	}, [code, state, sessionId, realmId, errorParam, navigate, providerRoute, providerName, isQuickBooks, zohoOrganizationId]);
 
 	const { mutate: completeOAuth, isPending } = useMutation({
 		mutationFn: async () => {
@@ -124,11 +134,18 @@ const QuickBooksOAuthCallback = () => {
 	});
 
 	useEffect(() => {
-		if (code && state && sessionId && !errorParam && !isPending && !error && !hasProcessed.current) {
-			hasProcessed.current = true;
-			completeOAuth();
+		if (!code || !state || !sessionId || errorParam || isPending || error || hasProcessed.current) {
+			return;
 		}
-	}, [code, state, sessionId, errorParam, completeOAuth, isPending, error]);
+		if (isQuickBooks && !realmId) {
+			return;
+		}
+		if (!isQuickBooks && !zohoOrganizationId) {
+			return;
+		}
+		hasProcessed.current = true;
+		completeOAuth();
+	}, [code, realmId, state, sessionId, errorParam, completeOAuth, isPending, error, isQuickBooks, zohoOrganizationId]);
 
 	if (error) {
 		return (

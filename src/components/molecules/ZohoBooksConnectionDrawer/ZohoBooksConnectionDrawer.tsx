@@ -29,7 +29,6 @@ interface ZohoBooksFormData {
 	client_id: string;
 	client_secret: string;
 	organization_id: string;
-	organization_name: string;
 	accounts_server: string;
 	webhook_secret: string;
 }
@@ -50,7 +49,6 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 		client_id: '',
 		client_secret: '',
 		organization_id: '',
-		organization_name: '',
 		accounts_server: 'https://accounts.zoho.in',
 		webhook_secret: '',
 	});
@@ -67,7 +65,6 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 			client_id: '',
 			client_secret: '',
 			organization_id: (secretData.organization_id as string) || '',
-			organization_name: (secretData.organization_name as string) || '',
 			accounts_server: (secretData.accounts_server as string) || 'https://accounts.zoho.in',
 			webhook_secret: '',
 		});
@@ -87,6 +84,9 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 		if (!connection && !formData.client_secret.trim()) newErrors.client_secret = 'Client secret is required';
 		if (!formData.organization_id.trim()) newErrors.organization_id = 'Organization ID is required';
 		if (!formData.accounts_server.trim()) newErrors.accounts_server = 'Accounts server is required';
+		if (!connection && !formData.webhook_secret.trim()) {
+			newErrors.webhook_secret = 'Webhook secret is required';
+		}
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
@@ -104,7 +104,7 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 				metadata: {
 					accounts_server: formData.accounts_server,
 					organization_id: formData.organization_id,
-					organization_name: formData.organization_name || '',
+					organization_name: '',
 				},
 				sync_config: {
 					invoice: {
@@ -122,9 +122,6 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 			sessionStorage.setItem(ZOHO_SESSION_KEY, response.session_id);
 			sessionStorage.setItem(OAUTH_PROVIDER_KEY, 'zoho_books');
 			sessionStorage.setItem('zoho_books_organization_id', formData.organization_id.trim());
-			if (formData.organization_name.trim()) {
-				sessionStorage.setItem('zoho_books_organization_name', formData.organization_name.trim());
-			}
 			onOpenChange(false);
 			window.location.href = response.oauth_url;
 		},
@@ -191,7 +188,8 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 			isOpen={isOpen}
 			onOpenChange={onOpenChange}
 			title={connection ? 'Edit Zoho Books Connection' : 'Connect to Zoho Books'}
-			description='Configure your Zoho Books integration and authorize via OAuth.'>
+			description='Configure your Zoho Books integration and authorize via OAuth.'
+			size='lg'>
 			<div className='space-y-6 mt-4'>
 				<Input
 					label='Connection Name'
@@ -233,14 +231,6 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 				/>
 
 				<Input
-					label='Organization Name (Optional)'
-					placeholder='Acme India Pvt Ltd'
-					value={formData.organization_name}
-					onChange={(value) => handleChange('organization_name', value)}
-					disabled={!!connection}
-				/>
-
-				<Input
 					label='Accounts Server'
 					placeholder='https://accounts.zoho.in'
 					value={formData.accounts_server}
@@ -253,12 +243,11 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 				<div className='p-4 bg-blue-50 border border-blue-200 rounded-lg'>
 					<h3 className='text-sm font-medium text-blue-800 mb-3'>Webhook configuration</h3>
 					<p className='text-xs text-blue-700 mb-4'>
-						In Zoho Books, create an Invoice webhook and set this URL. Use the same secret here and in Zoho so Flexprice can verify{' '}
-						<code className='text-xs bg-white/80 px-1 rounded'>X-Zoho-Webhook-Signature</code>.
+						In Zoho Books, create Invoice and Contact webhooks and set this URL on each. Use the same secret here and in Zoho so Flexprice
+						can verify <code className='text-xs bg-white/80 px-1 rounded'>X-Zoho-Webhook-Signature</code>.
 					</p>
 					<div className='mb-4'>
 						<label className='block text-sm font-medium text-blue-800 mb-2'>Webhook URL</label>
-						<p className='text-xs text-blue-700 mb-2'>Path pattern: /webhooks/zoho_books/&lt;tenant_id&gt;/&lt;environment_id&gt;</p>
 						<div className='flex items-center gap-2 p-2 bg-white border border-blue-200 rounded-md'>
 							<code className='flex-1 text-xs text-gray-800 font-mono break-all'>
 								{webhookUrl || 'Select tenant and environment to generate URL'}
@@ -275,12 +264,21 @@ const ZohoBooksConnectionDrawer: FC<ZohoBooksConnectionDrawerProps> = ({ isOpen,
 						</div>
 					</div>
 					<Input
-						label='Webhook secret (optional)'
+						label='Webhook secret'
 						type='password'
-						placeholder={connection ? 'Leave blank to keep existing secret' : 'Same secret as in Zoho Books webhook settings'}
+						placeholder={
+							connection
+								? 'Leave blank to keep existing secret, or enter a new secret to rotate'
+								: 'Same value as in Zoho Books webhook settings'
+						}
 						value={formData.webhook_secret}
 						onChange={(value) => handleChange('webhook_secret', value)}
-						description='Stored encrypted with your connection. Required for secure webhook verification once your backend handler is live.'
+						error={errors.webhook_secret}
+						description={
+							connection
+								? 'Stored encrypted. Leave blank to keep the current secret when updating.'
+								: 'Required. Must match the secret in Zoho Books so Flexprice can verify X-Zoho-Webhook-Signature. Stored encrypted with your connection.'
+						}
 					/>
 				</div>
 
