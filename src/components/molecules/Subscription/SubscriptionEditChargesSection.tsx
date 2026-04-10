@@ -6,6 +6,13 @@ import formatDate from '@/utils/common/format_date';
 import type { GroupedLineItems } from '@/hooks/useSubscriptionLineItemsGrouped';
 import type { PhaseDetail } from '@/hooks/useSubscriptionLineItemsGrouped';
 
+export interface SubscriptionCommitmentInfo {
+	enable_true_up?: boolean;
+	commitment_amount?: number;
+	overage_factor?: number;
+	commitment_duration?: string;
+}
+
 /** Subscription edit page: charges (line items) with and without phase. */
 export interface SubscriptionEditChargesSectionProps {
 	groupedLineItems: GroupedLineItems;
@@ -18,6 +25,8 @@ export interface SubscriptionEditChargesSectionProps {
 	onAddCharge?: () => void;
 	/** Disable Add charge button (e.g. when subscription is cancelled/trialing). */
 	isAddChargeDisabled?: boolean;
+	/** Subscription-level commitment info to show on usage line items. */
+	commitmentInfo?: SubscriptionCommitmentInfo;
 }
 
 const SubscriptionEditChargesSection: FC<SubscriptionEditChargesSectionProps> = ({
@@ -29,6 +38,7 @@ const SubscriptionEditChargesSection: FC<SubscriptionEditChargesSectionProps> = 
 	onTerminateLineItem,
 	onAddCharge,
 	isAddChargeDisabled = false,
+	commitmentInfo,
 }) => {
 	const hasWithoutPhase = groupedLineItems.withoutPhase.length > 0;
 	const phaseIds = Object.keys(groupedLineItems.byPhase);
@@ -65,6 +75,7 @@ const SubscriptionEditChargesSection: FC<SubscriptionEditChargesSectionProps> = 
 						onEdit={onEditLineItem}
 						onTerminate={onTerminateLineItem}
 						hideCardWrapper={true}
+						commitmentInfo={commitmentInfo}
 					/>
 				</Card>
 			)}
@@ -78,7 +89,13 @@ const SubscriptionEditChargesSection: FC<SubscriptionEditChargesSectionProps> = 
 			)}
 
 			{isEmpty && !onAddCharge && (
-				<SubscriptionLineItemTable data={allLineItems} isLoading={isLoading} onEdit={onEditLineItem} onTerminate={onTerminateLineItem} />
+				<SubscriptionLineItemTable
+					data={allLineItems}
+					isLoading={isLoading}
+					onEdit={onEditLineItem}
+					onTerminate={onTerminateLineItem}
+					commitmentInfo={commitmentInfo}
+				/>
 			)}
 
 			{hasPhases && (
@@ -104,6 +121,7 @@ const SubscriptionEditChargesSection: FC<SubscriptionEditChargesSectionProps> = 
 									onEdit={onEditLineItem}
 									onTerminate={onTerminateLineItem}
 									hideCardWrapper={true}
+									commitmentInfo={commitmentInfo}
 								/>
 							</Card>
 						);
