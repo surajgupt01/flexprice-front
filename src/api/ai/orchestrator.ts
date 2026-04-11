@@ -38,6 +38,8 @@ function toBillingPeriod(period: PricingPrice['billing_period']): BILLING_PERIOD
 	switch (period) {
 		case 'annual':
 			return BILLING_PERIOD.ANNUAL;
+		case 'one_time':
+			return BILLING_PERIOD.ONETIME;
 		case 'monthly':
 		default:
 			return BILLING_PERIOD.MONTHLY;
