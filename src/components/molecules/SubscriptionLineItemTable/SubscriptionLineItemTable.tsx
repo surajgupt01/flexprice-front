@@ -321,6 +321,17 @@ const SubscriptionLineItemTable: FC<Props> = ({ data, onEdit, onTerminate, isLoa
 				title: 'Billing Period',
 				render: (row) => formatBillingPeriodForDisplay(row.billing_period),
 			},
+			{
+				title: 'Quantity',
+				render: (row) => {
+					const q = row.quantity;
+					if (q == null || !Number.isFinite(Number(q))) return <span className='text-gray-500'>--</span>;
+					const n = Number(q);
+					return (
+						<span className='tabular-nums'>{Number.isInteger(n) ? n : n.toLocaleString(undefined, { maximumFractionDigits: 6 })}</span>
+					);
+				},
+			},
 			...(hasMultipleEntityTypes
 				? [
 						{
@@ -363,7 +374,7 @@ const SubscriptionLineItemTable: FC<Props> = ({ data, onEdit, onTerminate, isLoa
 			},
 			{
 				fieldVariant: 'interactive',
-				width: '30px',
+				width: '48px',
 				hideOnEmpty: true,
 				render: (row) => {
 					const isArchived = row.status === ENTITY_STATUS.ARCHIVED;
@@ -430,11 +441,23 @@ const SubscriptionLineItemTable: FC<Props> = ({ data, onEdit, onTerminate, isLoa
 			)}
 
 			{hideCardWrapper ? (
-				<FlexpriceTable showEmptyRow={false} data={processedLineItems} columns={columns} />
+				<FlexpriceTable
+					showEmptyRow={false}
+					data={processedLineItems}
+					columns={columns}
+					variant='no-bordered'
+					tableClassName='table-fixed'
+				/>
 			) : (
 				<Card variant='notched'>
 					<CardHeader title='Charges' />
-					<FlexpriceTable showEmptyRow={false} data={processedLineItems} columns={columns} />
+					<FlexpriceTable
+						showEmptyRow={false}
+						data={processedLineItems}
+						columns={columns}
+						variant='no-bordered'
+						tableClassName='table-fixed'
+					/>
 				</Card>
 			)}
 		</>
