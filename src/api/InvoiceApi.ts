@@ -28,7 +28,8 @@ class InvoiceApi {
 	public static async getCustomerInvoices(customerId: string): Promise<GetInvoicesResponse> {
 		return await this.listInvoices({
 			customer_id: customerId,
-			sort: [{ field: 'period_start', direction: SortDirection.DESC }],
+			sort_field: 'period_start',
+			order: SortDirection.ASC,
 		});
 	}
 
