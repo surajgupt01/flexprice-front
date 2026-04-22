@@ -6,7 +6,6 @@ import { FlexpriceTable, ColumnData } from '@/components/molecules';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import SubscriptionApi from '@/api/SubscriptionApi';
-import { ADDON_TYPE } from '@/models/Addon';
 import { ADDON_ASSOCIATION_STATUS } from '@/models/AddonAssociation';
 import { AddonAssociationResponse } from '@/types/dto/Subscription';
 import { toSentenceCase } from '@/utils/common/helper_functions';
@@ -22,18 +21,6 @@ interface SubscriptionAddonsSectionProps {
 	/** When true, add/remove addon actions are disabled. */
 	readOnly?: boolean;
 }
-
-const getAddonTypeChip = (type: string) => {
-	switch (type.toLowerCase()) {
-		case ADDON_TYPE.ONETIME:
-			return <Chip textColor='#4B5563' bgColor='#F3F4F6' label={toSentenceCase(type)} className='text-xs' />;
-		case ADDON_TYPE.MULTIPLE:
-		case ADDON_TYPE.MULTIPLE_INSTANCE:
-			return <Chip textColor='#1E40AF' bgColor='#DBEAFE' label={toSentenceCase(type)} className='text-xs' />;
-		default:
-			return <Chip textColor='#6B7280' bgColor='#F9FAFB' label={toSentenceCase(type)} className='text-xs' />;
-	}
-};
 
 const formatAddonCharges = (prices: Price[] = []): string => {
 	if (!prices || prices.length === 0) return '--';
@@ -245,10 +232,6 @@ const SubscriptionAddonsSection: FC<SubscriptionAddonsSectionProps> = ({ subscri
 				render: (row) => <span>{row.addon?.name || row.addon_id}</span>,
 			},
 			{
-				title: 'Type',
-				render: (row) => (row.addon ? getAddonTypeChip(row.addon.type) : '--'),
-			},
-			{
 				title: 'Status',
 				render: (row) => (
 					<Tooltip
@@ -344,7 +327,6 @@ const SubscriptionAddonsSection: FC<SubscriptionAddonsSectionProps> = ({ subscri
 				isOpen={isAddDialogOpen}
 				onOpenChange={setIsAddDialogOpen}
 				subscriptionId={subscriptionId}
-				existingAddons={addonAssociations.map((a) => a.addon).filter((addon): addon is NonNullable<typeof addon> => Boolean(addon))}
 				billingPeriod={subscriptionDetails?.billing_period}
 				currency={subscriptionDetails?.currency}
 			/>

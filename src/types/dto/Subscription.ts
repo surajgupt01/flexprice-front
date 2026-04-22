@@ -29,7 +29,8 @@ import {
 import { PriceUnitConfig } from '@/types/dto/Price';
 import { BILLING_PERIOD } from '@/constants/constants';
 import { QueryFilter, TimeRangeFilter } from './base';
-import { AddAddonToSubscriptionRequest } from './Addon';
+import { AddAddonToSubscriptionRequest, ADDON_CADENCE, ADDON_PRORATION_BEHAVIOR } from './Addon';
+export { ADDON_CADENCE as AddonCadence, ADDON_PRORATION_BEHAVIOR as ProrationBehavior } from './Addon';
 import { Invoice } from '@/models/Invoice';
 import { Coupon } from '@/models/Coupon';
 import Customer from '@/models/Customer';
@@ -551,9 +552,9 @@ export interface SubscriptionUsageByMetersResponse {
 export interface AddAddonRequest {
 	subscription_id: string;
 	addon_id: string;
-	quantity?: number;
 	start_date?: string;
-	end_date?: string;
+	cadence?: ADDON_CADENCE;
+	proration_behavior?: ADDON_PRORATION_BEHAVIOR;
 	metadata?: Metadata;
 	line_item_commitments?: LineItemCommitmentsMap;
 }
@@ -561,6 +562,8 @@ export interface AddAddonRequest {
 export interface RemoveAddonRequest {
 	addon_association_id: string;
 	reason?: string;
+	proration_behavior?: ADDON_PRORATION_BEHAVIOR;
+	effective_date?: string;
 }
 
 export interface AddonAssociationResponse {

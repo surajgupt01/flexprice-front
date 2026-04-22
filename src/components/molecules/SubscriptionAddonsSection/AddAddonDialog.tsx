@@ -5,7 +5,6 @@ import Dialog from '@/components/atoms/Dialog';
 import AddonApi from '@/api/AddonApi';
 import SubscriptionApi from '@/api/SubscriptionApi';
 import { toSentenceCase } from '@/utils/common/helper_functions';
-import { ADDON_TYPE } from '@/models/Addon';
 import { AddAddonRequest } from '@/types/dto/Subscription';
 import { AddonResponse } from '@/types/dto/Addon';
 import toast from 'react-hot-toast';
@@ -22,7 +21,6 @@ interface Props {
 	isOpen: boolean;
 	onOpenChange: (open: boolean) => void;
 	subscriptionId: string;
-	existingAddons: AddonResponse[];
 	billingPeriod?: BILLING_PERIOD;
 	currency?: string;
 }
@@ -31,7 +29,7 @@ interface FormErrors {
 	addon_id?: string;
 }
 
-const AddAddonDialog: React.FC<Props> = ({ isOpen, onOpenChange, subscriptionId, existingAddons, billingPeriod, currency }) => {
+const AddAddonDialog: React.FC<Props> = ({ isOpen, onOpenChange, subscriptionId, billingPeriod, currency }) => {
 	const [formData, setFormData] = useState<Partial<AddAddonRequest>>({});
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [selectedAddonDetails, setSelectedAddonDetails] = useState<AddonResponse | null>(null);
@@ -46,8 +44,6 @@ const AddAddonDialog: React.FC<Props> = ({ isOpen, onOpenChange, subscriptionId,
 			return await AddonApi.List({ limit: 1000, offset: 0 });
 		},
 	});
-
-	const existingAddonIds = useMemo(() => existingAddons.map((addon) => addon.id), [existingAddons]);
 
 	// Reset form when modal opens/closes
 	useEffect(() => {
@@ -206,23 +202,13 @@ const AddAddonDialog: React.FC<Props> = ({ isOpen, onOpenChange, subscriptionId,
 		[lineItemCommitments, handleConfigureCommitment],
 	);
 
-	// Filter addon options based on existing addons and addon type
 	const filteredAddonOptions = useMemo(() => {
-		// Filter out addons that are already added to the subscription
-		const filteredAddons =
-			addonsResponse?.items?.filter((addon) => {
-				if (addon.type === ADDON_TYPE.ONETIME) {
-					return !existingAddonIds.includes(addon.id);
-				}
-				return true;
-			}) || [];
-
-		return filteredAddons.map((addon: AddonResponse) => ({
+		return (addonsResponse?.items || []).map((addon: AddonResponse) => ({
 			label: addon.name,
 			value: addon.id,
-			description: `${toSentenceCase(addon.type)} - ${addon.description || 'No description'}`,
+			description: addon.description || 'No description',
 		}));
-	}, [addonsResponse, existingAddonIds]);
+	}, [addonsResponse]);
 
 	return (
 		<Dialog isOpen={isOpen} showCloseButton={false} onOpenChange={onOpenChange} title='Add Addon' className='sm:max-w-[600px]'>
