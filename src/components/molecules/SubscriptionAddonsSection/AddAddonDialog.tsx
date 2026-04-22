@@ -251,7 +251,7 @@ const AddAddonDialog: React.FC<Props> = ({ isOpen, onOpenChange, subscriptionId,
 	}, [addonsResponse]);
 
 	return (
-		<Dialog isOpen={isOpen} showCloseButton={false} onOpenChange={onOpenChange} title='Add Addon' className='sm:max-w-[600px]'>
+		<Dialog isOpen={isOpen} showCloseButton={false} onOpenChange={onOpenChange} title='Add' className='sm:max-w-[600px]'>
 			<div className='grid gap-4 mt-3'>
 				<div className='space-y-2'>
 					<Select
@@ -269,11 +269,7 @@ const AddAddonDialog: React.FC<Props> = ({ isOpen, onOpenChange, subscriptionId,
 					<div className='space-y-3'>
 						<div className='flex items-center justify-between'>
 							<div>
-								<p className='text-sm font-medium text-gray-700'>Addon Charges</p>
-								<p className='text-xs text-gray-500'>
-									Filtered by {billingPeriod ? toSentenceCase(billingPeriod.replace('_', ' ')) : 'billing period'} and{' '}
-									{currency ? currency.toUpperCase() : 'currency'}
-								</p>
+								<p className='text-sm font-medium text-gray-700'>Charges</p>
 							</div>
 						</div>
 						{selectedAddonPrices.length > 0 ? (
@@ -285,7 +281,6 @@ const AddAddonDialog: React.FC<Props> = ({ isOpen, onOpenChange, subscriptionId,
 								<p className='text-sm text-gray-600'>No charges for this billing period/currency.</p>
 							</div>
 						)}
-						<p className='text-xs text-gray-500'>Commitments can be configured only for usage-based charges.</p>
 
 						{/* Advanced options (optional) */}
 						<Collapsible
@@ -380,7 +375,7 @@ const AddAddonDialog: React.FC<Props> = ({ isOpen, onOpenChange, subscriptionId,
 					Cancel
 				</Button>
 				<Button onClick={handleSave} disabled={isAddingAddon}>
-					{isAddingAddon ? 'Adding...' : 'Add Addon'}
+					{isAddingAddon ? 'Adding...' : 'Add'}
 				</Button>
 			</div>
 		</Dialog>
