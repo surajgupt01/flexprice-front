@@ -113,63 +113,6 @@ export interface GetSubscriptionPreviewResponse {
 	total_tax: number;
 }
 
-export interface PauseSubscriptionPayload {
-	dry_run?: boolean;
-	metadata?: Metadata;
-	pause_days?: number;
-	pause_end?: string;
-	pause_mode?: 'immediate';
-	pause_start?: string;
-	reason?: string;
-}
-
-export interface ResumeSubscriptionPayload {
-	dry_run?: boolean;
-	metadata?: Metadata;
-	resume_mode?: 'immediate';
-}
-
-export interface SubscriptionPauseResponse {
-	created_at: string;
-	created_by: string;
-	environment_id: string;
-	id: string;
-	metadata: Metadata;
-	original_period_end: string;
-	original_period_start: string;
-	pause_end: string;
-	pause_mode: string;
-	pause_start: string;
-	pause_status: string;
-	reason: string;
-	resume_mode: string;
-	resumed_at: string;
-	status: 'published';
-	subscription_id: string;
-	tenant_id: string;
-	updated_at: string;
-	updated_by: string;
-}
-
-// Since both responses have the same structure, we can reuse the interface
-export type SubscriptionResumeResponse = SubscriptionPauseResponse;
-
-export interface SubscriptionPause {
-	id: string;
-	subscription_id: string;
-	pause_start: string;
-	pause_end: string;
-	pause_status: string;
-	pause_mode: string;
-	created_at: string;
-	updated_at: string;
-}
-
-export interface ListSubscriptionPausesResponse {
-	pauses: SubscriptionPause[];
-	total: number;
-}
-
 // Subscription Change Types
 export interface PreviewSubscriptionChangeRequest {
 	plan_id?: string;
@@ -327,8 +270,11 @@ export interface CreateSubscriptionRequest {
 	lookup_key?: string;
 	start_date?: string;
 	end_date?: string;
-	trial_start?: string;
-	trial_end?: string;
+	/**
+	 * Trial length for the new subscription. `undefined`/omit = inherit from plan recurring-fixed prices
+	 * (must be uniform). `0` = explicitly no trial (overrides catalog). `>0` = override duration in days.
+	 */
+	trial_period_days?: number | null;
 	billing_period: BILLING_PERIOD;
 	billing_period_count?: number;
 	metadata?: Metadata;
@@ -608,7 +554,7 @@ export interface SubscriptionPriceCreateRequest {
 	meter_id?: string;
 	filter_values?: Record<string, string[]>;
 	lookup_key?: string;
-	trial_period?: number;
+	trial_period_days?: number;
 	description?: string;
 	metadata?: Metadata;
 	tier_mode?: TIER_MODE;
@@ -678,7 +624,7 @@ export interface SubscriptionLineItemResponse {
 	currency: string;
 	billing_period: string;
 	invoice_cadence: string;
-	trial_period?: number;
+	trial_period_days?: number;
 	price_unit_id?: string;
 	price_unit?: string;
 	entity_type: SUBSCRIPTION_LINE_ITEM_ENTITY_TYPE;

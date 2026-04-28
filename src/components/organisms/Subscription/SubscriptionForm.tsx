@@ -1,5 +1,6 @@
-import { Select, FormHeader, Label, DecimalUsageInput, DatePicker } from '@/components/atoms';
+import { Select, FormHeader, Label, DecimalUsageInput, DatePicker, Input } from '@/components/atoms';
 import { Switch } from '@/components/ui';
+import { Label as RadixLabel } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { toSentenceCase } from '@/utils/common/helper_functions';
 import { PlanResponse } from '@/types';
@@ -877,6 +878,7 @@ const SubscriptionForm = ({
 							disabled={isDisabled}
 						/>
 					</div>
+
 					<div className='space-y-3 md:col-span-2'>
 						<InheritedCustomersTable
 							data={state.inheritanceCustomers}
@@ -885,13 +887,47 @@ const SubscriptionForm = ({
 							subscriberCustomerId={state.customerId}
 						/>
 					</div>
-					<div className='flex flex-col space-y-2'>
-						<Label label='Proration behavior' />
-						<Switch
-							checked={state.prorationCreateLineItems}
-							onCheckedChange={(checked) => setState((prev) => ({ ...prev, prorationCreateLineItems: checked }))}
-							disabled={isDisabled}
-						/>
+
+					<div className='flex flex-col gap-3'>
+						<div className='flex flex-wrap items-center gap-x-8 gap-y-3'>
+							<div className='flex items-center gap-3'>
+								<Label label='Proration behavior' labelClassName='!mb-0 whitespace-nowrap' />
+								<Switch
+									checked={state.prorationCreateLineItems}
+									onCheckedChange={(checked) => setState((prev) => ({ ...prev, prorationCreateLineItems: checked }))}
+									disabled={isDisabled}
+								/>
+							</div>
+							<div className='flex items-center gap-3 min-w-0'>
+								<Switch
+									id='subscription-create-trial'
+									checked={state.subscriptionTrialEnabled}
+									onCheckedChange={(value) => {
+										setState((prev) => ({
+											...prev,
+											subscriptionTrialEnabled: value,
+											subscriptionTrialPeriodDays: value ? prev.subscriptionTrialPeriodDays : '',
+										}));
+									}}
+									disabled={isDisabled || isLoadingPlanDetails}
+								/>
+								<RadixLabel htmlFor='subscription-create-trial' className='cursor-pointer'>
+									<p className='font-medium text-sm text-[#18181B]'>Start with a free trial</p>
+								</RadixLabel>
+							</div>
+						</div>
+						{state.subscriptionTrialEnabled && (
+							<div className='w-full max-w-xs'>
+								<Input
+									variant='number'
+									value={state.subscriptionTrialPeriodDays}
+									onChange={(value) => setState((prev) => ({ ...prev, subscriptionTrialPeriodDays: value }))}
+									suffix='days'
+									placeholder='Number of trial days'
+									disabled={isDisabled || isLoadingPlanDetails}
+								/>
+							</div>
+						)}
 					</div>
 				</div>
 			)}

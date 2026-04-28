@@ -149,10 +149,6 @@ export type { GetAllSecretKeysResponse, CreateSecretKeyPayload, CreateSecretKeyR
 export type {
 	GetSubscriptionDetailsPayload,
 	GetSubscriptionPreviewResponse,
-	PauseSubscriptionPayload,
-	ResumeSubscriptionPayload,
-	SubscriptionPauseResponse,
-	SubscriptionResumeResponse,
 	CreateSubscriptionRequest,
 	SubscriptionInheritanceConfig,
 	UpdateSubscriptionRequest,
