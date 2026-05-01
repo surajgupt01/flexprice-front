@@ -27,6 +27,8 @@ import {
 	ExecuteSubscriptionChangeResponse,
 	ExecuteSubscriptionModifyRequest,
 	SubscriptionModifyResponse,
+	SubscriptionLineItemFilter,
+	ListSubscriptionLineItemsResponse,
 } from '@/types/dto/Subscription';
 import { ListCreditGrantApplicationsResponse } from '@/types/dto';
 import { generateQueryParams } from '@/utils/common/api_helper';
@@ -194,6 +196,14 @@ class SubscriptionApi {
 	 */
 	public static async deleteSubscriptionLineItem(id: string, payload: DeleteSubscriptionLineItemRequest): Promise<void> {
 		return await AxiosClient.delete(`${this.baseUrl}/lineitems/${id}`, payload);
+	}
+
+	/**
+	 * Search subscription line items (POST /subscriptions/lineitems/search).
+	 * JSON body matches {@link SubscriptionLineItemFilter} (subscription/customer/price, pagination, expand=prices, etc.).
+	 */
+	public static async searchSubscriptionLineItems(filter: SubscriptionLineItemFilter): Promise<ListSubscriptionLineItemsResponse> {
+		return await AxiosClient.post<ListSubscriptionLineItemsResponse>(`${this.baseUrl}/lineitems/search`, filter);
 	}
 
 	// =============================================================================

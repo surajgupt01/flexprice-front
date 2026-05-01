@@ -26,7 +26,7 @@ import {
 	PRICE_UNIT_TYPE,
 	INVOICE_CADENCE,
 } from '@/models';
-import { PriceUnitConfig } from '@/types/dto/Price';
+import { PriceUnitConfig, PriceResponse } from '@/types/dto/Price';
 import { BILLING_PERIOD } from '@/constants/constants';
 import { QueryFilter, TimeRangeFilter } from './base';
 import { AddAddonToSubscriptionRequest, ADDON_CADENCE, ADDON_PRORATION_BEHAVIOR } from './Addon';
@@ -647,6 +647,40 @@ export interface SubscriptionLineItemResponse {
 	commitment_overage_factor?: string;
 	commitment_true_up_enabled?: boolean;
 	commitment_windowed?: boolean;
+}
+
+/** Line item as returned by list/search when `expand` includes related entities (e.g. `prices`). */
+export type SubscriptionLineItemListItem = SubscriptionLineItemResponse & {
+	price?: PriceResponse;
+};
+
+/**
+ * Filter for POST /subscriptions/lineitems/search.
+ * Matches backend `SubscriptionLineItemFilter`: embedded `QueryFilter` (e.g. limit, offset, expand), `TimeRangeFilter`,
+ * plus the fields below.
+ */
+export interface SubscriptionLineItemFilter extends Omit<QueryFilter, 'sort'>, TimeRangeFilter {
+	sort?: TypedBackendSort[];
+	filters?: TypedBackendFilter[];
+
+	subscription_ids?: string[];
+	customer_ids?: string[];
+	price_ids?: string[];
+	meter_ids?: string[];
+	currencies?: string[];
+	billing_periods?: string[];
+	entity_ids?: string[];
+	entity_type?: SUBSCRIPTION_LINE_ITEM_ENTITY_TYPE;
+	addon_association_ids?: string[];
+	/** Backend form/json: `active_filter` (default true when omitted). */
+	active_filter?: boolean;
+	current_period_start?: string;
+}
+
+/** Response for POST /subscriptions/lineitems/search (matches backend ListSubscriptionLineItemsResponse). */
+export interface ListSubscriptionLineItemsResponse {
+	items: SubscriptionLineItemListItem[];
+	pagination: Pagination;
 }
 
 // =============================================================================

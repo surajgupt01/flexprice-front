@@ -166,6 +166,9 @@ export type {
 	ChangedInvoice,
 	ChangedResources,
 	SubscriptionModifyResponse,
+	SubscriptionLineItemFilter,
+	ListSubscriptionLineItemsResponse,
+	SubscriptionLineItemListItem,
 } from './Subscription';
 
 export type { SubscriptionModifyType } from '@/models';
