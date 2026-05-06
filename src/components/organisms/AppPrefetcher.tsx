@@ -18,14 +18,14 @@ const AppPrefetcher = () => {
 				// Preload failures should never affect UX
 			});
 
-			for (const config of PREFETCH_REGISTRY) {
+			for (const config of Object.values(PREFETCH_REGISTRY)) {
 				const key = config.queryKey(envId);
 				if (queryClient.getQueryData(key)) continue;
 
 				queryClient
 					.prefetchQuery({
 						queryKey: key,
-						queryFn: () => config.queryFn(envId),
+						queryFn: config.queryFn,
 						staleTime: config.staleTime,
 						gcTime: config.gcTime,
 					})

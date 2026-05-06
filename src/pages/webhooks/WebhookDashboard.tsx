@@ -1,6 +1,5 @@
 import { Loader, Page } from '@/components/atoms';
 import { ApiDocsContent } from '@/components/molecules/ApiDocs/ApiDocs';
-import WebhookApi from '@/api/WebhookApi';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { AppPortal } from 'svix-react';
@@ -8,17 +7,19 @@ import 'svix-react/style.css';
 import { EmptyPage } from '@/components/organisms';
 import { useMemo } from 'react';
 import useEnvironment from '@/hooks/useEnvironment';
-import { PrefetchQueryKey } from '@/config/prefetchConfig';
+import { PREFETCH_REGISTRY, PrefetchQueryKey } from '@/config/prefetchConfig';
 
 const WebhookDashboard = () => {
 	const { activeEnvironment } = useEnvironment();
+	const envId = activeEnvironment?.id;
+	const prefetch = PREFETCH_REGISTRY[PrefetchQueryKey.WebhookDashboardUrl];
 
 	const { data, isLoading, isError, error } = useQuery({
-		queryKey: [PrefetchQueryKey.WebhookDashboardUrl, activeEnvironment?.id],
-		queryFn: async () => await WebhookApi.getWebhookDashboardUrl(),
-		staleTime: 5 * 60 * 1000,
-		gcTime: 10 * 60 * 1000,
-		enabled: !!activeEnvironment?.id,
+		queryKey: prefetch.queryKey(envId ?? ''),
+		queryFn: prefetch.queryFn,
+		staleTime: prefetch.staleTime,
+		gcTime: prefetch.gcTime,
+		enabled: !!envId,
 	});
 
 	// Memoize the AppPortal props to prevent unnecessary re-renders
