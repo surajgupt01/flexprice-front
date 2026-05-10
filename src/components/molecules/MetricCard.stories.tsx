@@ -2,27 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { expect, within } from '@storybook/test';
 import MetricCard from './MetricCard';
 
-/**
- * MetricCard
- *
- * A reusable analytics card component used to display metrics,
- * percentages, and currency-based values with optional trend indicators.
- *
- * Features:
- * - Supports currency formatting
- * - Supports percentage formatting
- * - Optional positive/negative trend indicator
- * - Clean dashboard-friendly UI
- *
- * Props:
- * @param title - Label/title of the metric
- * @param value - Numeric metric value
- * @param currency - Currency code (e.g. USD, INR)
- * @param isPercent - Formats value as percentage
- * @param showChangeIndicator - Displays trend arrow
- * @param isNegative - Shows negative/downward trend styling
- */
-
 const meta: Meta<typeof MetricCard> = {
 	title: 'Molecules/MetricCard',
 	component: MetricCard,

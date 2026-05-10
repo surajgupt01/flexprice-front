@@ -7,16 +7,8 @@ import PlanPriceTable from './PlanPriceTable';
 import { PriceApi } from '@/api/PriceApi';
 import { BILLING_PERIOD } from '@/constants/constants';
 
-// ================================
-// MOCK API METHODS
-// ================================
-
 PriceApi.searchPrices = fn();
 PriceApi.DeletePrice = fn();
-
-// ================================
-// QUERY CLIENT
-// ================================
 
 const createQueryClient = () =>
 	new QueryClient({
@@ -27,10 +19,6 @@ const createQueryClient = () =>
 			},
 		},
 	});
-
-// ================================
-// MOCK PLAN
-// ================================
 
 const mockPlan = {
 	id: 'plan_001',
@@ -63,19 +51,11 @@ const mockPlan = {
 	display_order: 1,
 };
 
-// ================================
-// DATES
-// ================================
-
 const now = new Date();
 
 const futureDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
 const pastDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
-
-// ================================
-// MOCK PRICE FACTORY
-// ================================
 
 const createPrice = (overrides = {}) => ({
 	id: `price_${Math.random().toString(36).slice(2)}`,
@@ -128,10 +108,6 @@ const createPrice = (overrides = {}) => ({
 	...overrides,
 });
 
-// ================================
-// MOCK PRICES
-// ================================
-
 const MOCK_PRICES = [
 	createPrice({
 		id: 'price_001',
@@ -170,10 +146,6 @@ const MOCK_PRICES = [
 	}),
 ];
 
-// ================================
-// DECORATOR
-// ================================
-
 const withProviders = (Story: React.ComponentType) => (
 	<QueryClientProvider client={createQueryClient()}>
 		<MemoryRouter>
@@ -183,10 +155,6 @@ const withProviders = (Story: React.ComponentType) => (
 		</MemoryRouter>
 	</QueryClientProvider>
 );
-
-// ================================
-// META
-// ================================
 
 const meta: Meta<typeof PlanPriceTable> = {
 	title: 'Organisms/PlanPriceTable',
@@ -222,10 +190,6 @@ const meta: Meta<typeof PlanPriceTable> = {
 export default meta;
 
 type Story = StoryObj<typeof PlanPriceTable>;
-
-// ================================
-// DEFAULT
-// ================================
 
 export const Default: Story = {
 	loaders: [
@@ -263,10 +227,6 @@ export const Default: Story = {
 	},
 };
 
-// ================================
-// EMPTY STATE
-// ================================
-
 export const Empty: Story = {
 	loaders: [
 		async () => {
@@ -285,10 +245,6 @@ export const Empty: Story = {
 	],
 };
 
-// ================================
-// LOADING STATE
-// ================================
-
 export const Loading: Story = {
 	loaders: [
 		async () => {
@@ -298,10 +254,6 @@ export const Loading: Story = {
 		},
 	],
 };
-
-// ================================
-// UPCOMING PRICES
-// ================================
 
 export const UpcomingPrices: Story = {
 	loaders: [
@@ -324,10 +276,6 @@ export const UpcomingPrices: Story = {
 	],
 };
 
-// ================================
-// INACTIVE PRICES
-// ================================
-
 export const InactivePrices: Story = {
 	loaders: [
 		async () => {
@@ -348,10 +296,6 @@ export const InactivePrices: Story = {
 		},
 	],
 };
-
-// ================================
-// ENTERPRISE PLAN
-// ================================
 
 export const EnterprisePlan: Story = {
 	args: {
@@ -397,10 +341,6 @@ export const EnterprisePlan: Story = {
 		},
 	],
 };
-
-// ================================
-// INTERACTION TEST
-// ================================
 
 export const InteractionTest: Story = {
 	loaders: [
