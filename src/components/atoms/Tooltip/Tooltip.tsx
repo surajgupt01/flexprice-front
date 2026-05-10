@@ -40,4 +40,6 @@ const Tooltip: React.FC<TooltipProps> = ({
 	);
 };
 
-export default Tooltip;
+const TooltipComponent = Tooltip;
+
+export default TooltipComponent;
